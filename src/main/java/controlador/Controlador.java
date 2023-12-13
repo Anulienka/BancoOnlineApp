@@ -46,8 +46,6 @@ public class Controlador {
     }
 
 
-
-
     public boolean validarNombre(String nombre) {
         Pattern pat = Pattern.compile("[A-Za-z]+");
         Matcher mat = pat.matcher(nombre);
@@ -90,6 +88,13 @@ public class Controlador {
 
         Pattern pat = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).{10}$");
         Matcher mat = pat.matcher(contrasena);
+        return mat.matches();
+    }
+
+    public boolean validarCodigo(String codigo) {
+        Pattern pat = Pattern.compile("[1-9]{4}");
+        Matcher mat = pat.matcher(codigo);
+        //necesita tener mas que 18 anos
         return mat.matches();
     }
 
