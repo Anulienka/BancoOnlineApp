@@ -15,8 +15,9 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
         return cliente;
     }
 
+
     @Override
-    public ClienteBanco buscarCliente(String usuario) {
+    public ClienteBanco existeUsuario(String usuario) {
         ClienteBanco clienteBanco = null;
         EntityTransaction entityTransaction = em.getTransaction();
         entityTransaction.begin();
@@ -27,6 +28,7 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
             Query query = em.createQuery(HQL_COD);
             query.setParameter("usuario", usuario);
 
+
             // Obtiene el pieza
             clienteBanco = (ClienteBanco) query.getSingleResult();
 
@@ -49,17 +51,17 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
     }
 
     @Override
-    public ClienteBanco existeUsuario(String email, String usuario) {
+    public ClienteBanco existeDni(String dni) {
         ClienteBanco clienteBanco = null;
         EntityTransaction entityTransaction = em.getTransaction();
         entityTransaction.begin();
 
 
         try {
-            String HQL_COD = "from Clientes where email = :email AND usuario = :usuario";
+            String HQL_COD = "from Clientes where dni = :dni";
             Query query = em.createQuery(HQL_COD);
-            query.setParameter("email", email);
-            query.setParameter("usuario", usuario);
+            query.setParameter("dni", dni);
+
 
             // Obtiene el pieza
             clienteBanco = (ClienteBanco) query.getSingleResult();
@@ -79,6 +81,37 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
             }
             e.printStackTrace();
         }
-        return clienteBanco;
-    }
+        return clienteBanco;    }
+
+    public ClienteBanco existeEmail(String email) {
+        ClienteBanco clienteBanco = null;
+        EntityTransaction entityTransaction = em.getTransaction();
+        entityTransaction.begin();
+
+
+        try {
+            String HQL_COD = "from Clientes where email = :email";
+            Query query = em.createQuery(HQL_COD);
+            query.setParameter("email", email);
+
+
+            // Obtiene el pieza
+            clienteBanco = (ClienteBanco) query.getSingleResult();
+
+            // Realiza el commit de la transacción
+            entityTransaction.commit();
+        } catch (NoResultException e) {
+            // No se encontró ningún resultado
+            clienteBanco = null;
+            if (entityTransaction.isActive()) {
+                entityTransaction.rollback();
+            }
+        } catch (Exception e) {
+            // Maneja las excepciones, realiza rollback si es necesario
+            if (entityTransaction.isActive()) {
+                entityTransaction.rollback();
+            }
+            e.printStackTrace();
+        }
+        return clienteBanco;    }
 }

@@ -4,6 +4,8 @@ import model.ClienteBanco;
 
 public interface ClienteDAO {
 
-    ClienteBanco buscarCliente(String usuario);
-    ClienteBanco existeUsuario(String email, String usuario);
+    ClienteBanco existeUsuario(String usuario);
+    ClienteBanco existeDni(String dni);
+    ClienteBanco existeEmail(String email);
+
 }

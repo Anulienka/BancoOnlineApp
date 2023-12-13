@@ -78,29 +78,35 @@ public class Cliente {
 //                            oos.writeObject(datoCifrado)
 //                        }
 
-
                         //FIRMA DIGITAL - documento firmado digitalmente por el servidor
                         //firmar documento
                         firmarDocumento(ois, oos);
                         //recibe mensaje del banco
                         mensajeBanco = ois.readUTF();
                         if (mensajeBanco.equals("R")) {
-                            System.out.println("Te has registrado correctamente, puedes usar app de banco.\n");
+                            System.out.println("¡Usuario ha sido registrado con éxito y puede usar la aplicación del banco!\n");
                             //no pongo break aqui, porque usuario puede iniciar sesion si esta registrado, sin que elije en menu
                         } else if (mensajeBanco.equals("E")) {
-                            System.out.println("Error en registrar");
+                            System.out.println("Error en registrar.");
                             break;
                         } else if (mensajeBanco.equals("EX")) {
-                            System.out.println("Ya existe usuario con mismo Username.\n");
+                            System.out.println("El usuario ya está en uso. Por favor, elige otro.\n");
                             break;
                         } else if (mensajeBanco.equals("NS")) {
-                            System.out.println("No se ha firmado documento, cliente no ha sido registrado.\n");
+                            System.out.println("No se han aceptado normas de banco, cliente no ha sido registrado.\n");
+                            break;
+                        }else if (mensajeBanco.equals("EXEMAIL")) {
+                            System.out.println("Usuario con mismo email ya existe\n");
+                            break;
+                        }
+                        else if (mensajeBanco.equals("EXDNI")) {
+                            System.out.println("Usuario con mismo DNI ya existe\n");
                             break;
                         }
 
                     case 2:
                         System.out.println("\n****** INICIAR SESION ******");
-                        System.out.println("Para poder realizar operaciones bancarias, \nnecesitas iniciar sesion insertando su usuario y contraseña.\n");
+                        System.out.println("Para poder realizar operaciones bancarias, \nse necesita iniciar sesion insertando usuario y contraseña.\n");
                         oos.writeObject(2);
                         String[] credenciales = iniciarSesion();
                         //envio al servidor usuario y contrasena de cliente para que lo valida
@@ -127,6 +133,7 @@ public class Cliente {
                                             oos.writeObject(3);
                                             mensajeBanco = ois.readUTF();
                                             System.out.println(mensajeBanco);
+
                                             break;
                                         case 2:
                                             oos.writeObject(4);
@@ -232,6 +239,30 @@ public class Cliente {
     }
 
     /**
+     * Hashea la contraseña utilizando el algoritmo SHA-256 y devuelve el resultado en formato hexadecimal.
+     *
+     * @param contrasena La contraseña que queremos hashear.
+     * @return La representación en formato hexadecimal del hash de la contraseña.
+     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de hash especificado.
+     */
+    public String hashearContrasena(String contrasena) throws NoSuchAlgorithmException {
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.reset();
+        byte[] contrasenaByte = contrasena.getBytes();
+        md.update(contrasenaByte);
+        //esto es contrasena HASH
+        byte[] resumen = md.digest();
+
+        //para que devuelve como string
+        StringBuilder contrasenaHash = new StringBuilder();
+        for (byte b : resumen) {
+            contrasenaHash.append(String.format("%02x", b));
+        }
+        return contrasenaHash.toString();
+    }
+
+    /**
      * Descifra el dato utilizando la clave privada de cliente con RSA algoritmo.
      *
      * @param datoParaDescifrar Datos cifrados que se van a descifrar.
@@ -264,7 +295,7 @@ public class Cliente {
     private void firmarDocumento(ObjectInputStream ois, ObjectOutputStream oos) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         //recibe documento desde servidor
         String normasBanco = ois.readObject().toString();
-        System.out.println(normasBanco);
+        System.out.println("\n" + normasBanco);
         char opcion = 'O';
 
         while (true) {
@@ -323,6 +354,7 @@ public class Cliente {
         int opcionCuenta = 0;
         String numCuenta = null;
 
+        System.out.println("");
         for (String c : cuentasUsuario) {
             System.out.println(contador + ". " + c);
             contador++;
@@ -374,9 +406,10 @@ public class Cliente {
      * @return Un array que contiene el nombre de usuario en la posición 0 y la contraseña en la posición 1.
      * @throws IOException Si ocurre un error de entrada/salida durante la lectura.
      */
-    private String[] iniciarSesion() throws IOException {
+    private String[] iniciarSesion() throws IOException, NoSuchAlgorithmException {
         String contrasena;
         String usuario;
+        String contrasenaHasheada;
         String[] credenciales = new String[2];
         ClienteBanco clienteBanco = new ClienteBanco();
 
@@ -389,11 +422,12 @@ public class Cliente {
             System.out.println("CONTRASEÑA: ");
             System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
             contrasena = br.readLine();
+            contrasenaHasheada = hashearContrasena(contrasena);
         } while (!controlador.validarContrasena(contrasena));
 
         //al HashMap anado usuario y contrasena que quiero enviar al servidor
         credenciales[0] = usuario;
-        credenciales[1] = contrasena;
+        credenciales[1] = contrasenaHasheada;
 
         return credenciales;
     }
@@ -404,9 +438,10 @@ public class Cliente {
      * @return Un array que contiene la información del cliente, en el orden: Nombre, Apellido, Edad, Email, Usuario, Contraseña.
      * @throws IOException Si ocurre un error de entrada/salida durante la lectura.
      */
-    private String[] registrarClienteBanco() throws IOException {
-        String[] infoCliente = new String[6];
+    private String[] registrarClienteBanco() throws IOException, NoSuchAlgorithmException {
+        String[] infoCliente = new String[7];
 
+        String dni;
         String email;
         String contrasena;
         String nombre;
@@ -428,10 +463,16 @@ public class Cliente {
         } while (!controlador.validarApellido(apellido));
 
         do {
+            System.out.print("DNI: ");
+            dni = br.readLine();
+            infoCliente[2] = dni.substring(0, 8) + dni.substring(8).toUpperCase();
+        } while (!controlador.validarDNI(dni));
+
+        do {
             System.out.print("Edad: ");
             try {
                 edad = br.readLine();
-                infoCliente[2] = edad;
+                infoCliente[3] = edad;
             } catch (NumberFormatException e) {
                 System.out.println("Ingresa un número válido para la edad.");
             }
@@ -440,20 +481,21 @@ public class Cliente {
         do {
             System.out.print("Email: ");
             email = br.readLine();
-            infoCliente[3] = email;
+            infoCliente[4] = email;
         } while (!controlador.validarEmail(email));
 
         do {
             System.out.print("Usuario (debe que tener 6 caracteres alfanumericos): ");
             usuario = br.readLine();
-            infoCliente[4] = usuario;
+            infoCliente[5] = usuario;
         } while (!controlador.validarUsuario(usuario));
 
         do {
             System.out.println("Contraseña: ");
             System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
             contrasena = br.readLine();
-            infoCliente[5] = contrasena;
+            String contrasenaHasheada = hashearContrasena(contrasena);
+            infoCliente[6] = contrasenaHasheada;
         } while (!controlador.validarContrasena(contrasena));
 
 

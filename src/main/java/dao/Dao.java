@@ -26,7 +26,7 @@ abstract class Dao<T, K> {
         try {
             entityTransaction.commit();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.out.println(e);
         }
         return t;
     }

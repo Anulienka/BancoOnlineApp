@@ -81,14 +81,23 @@ public class HiloServidor extends Thread {
                         if (verificada) {
                             //registra cliente
                             System.out.println("Registrando usuario");
-                            //comprueba si existe usuario con mismo email y username
-                            if (controlador.existeUsuario(usuarioBanco.getEmail(), usuarioBanco.getUsuario()) == null) {
-                                if (controlador.insertarUsuario(usuarioBanco)) {
-                                    //registrado
-                                    oos.writeUTF("R");
-                                } else {
-                                    //error
-                                    oos.writeUTF("E");
+                            //comprueba si existe usuario con mismo DNI, username y contrasena
+                            if (controlador.existeUsuario(usuarioBanco.getUsuario()) == null) {
+                                if(controlador.existeDni(usuarioBanco.getDni()) == null){
+                                    if(controlador.existeEmail(usuarioBanco.getEmail()) == null){
+                                        if (controlador.insertarUsuario(usuarioBanco)) {
+                                            //registrado
+                                            oos.writeUTF("R");
+                                        } else {
+                                            //error
+                                            oos.writeUTF("E");
+                                        }
+                                    }else{
+                                        oos.writeUTF("EXEMAIL");
+                                    }
+
+                                }else{
+                                   oos.writeUTF("EXDNI");
                                 }
                             } else {
                                 //ya existe usuario con mismo Username
@@ -106,10 +115,10 @@ public class HiloServidor extends Thread {
                         credencialesUsuario = (String[]) ois.readObject();
                         //las valida
                         System.out.println("Hasheando contrasena que ha escrito usuario al iniciar sesion");
-                        contrasenaHash = hashearContrasena(credencialesUsuario[1]);
+                        contrasenaHash = credencialesUsuario[1];
                         //busca cliente segun usuario que ha insertado cuando queria inicial sesion
                         System.out.println("Buscando usuario");
-                        usuarioActual = controlador.buscarUsuario(credencialesUsuario[0]);
+                        usuarioActual = controlador.existeUsuario(credencialesUsuario[0]);
                         if (usuarioActual != null) {
                             //comprueba si contrasenas Hash son iguales
                             System.out.println("Comprobando contrasena");
@@ -137,7 +146,7 @@ public class HiloServidor extends Thread {
                         c.setSaldo(0.0);
                         c.setClienteBanco(usuarioActual);
                         if (controlador.insertarCuentaCliente(c)) {
-                            oos.writeUTF("Cuenta creada correctamente");
+                            oos.writeUTF("Cuenta ha sido creada.\nNumero de la cuenta: " + c.getNumCuenta());
                         } else {
                             oos.writeUTF("Error en crear la cuenta");
                         }
@@ -207,11 +216,13 @@ public class HiloServidor extends Thread {
     }
 
     private String[] recogerInfoUsuario() throws IOException, ClassNotFoundException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        String[] usuarioInfo = new String[6];
+        String[] usuarioInfo = new String[7];
         byte[] nombre = (byte[]) ois.readObject();
         String nombreUsuario = descifrar(nombre);
         byte[] apellido = (byte[]) ois.readObject();
         String apellidoUsuario = descifrar(apellido);
+        byte[] dni = (byte[]) ois.readObject();
+        String dniUsuario = descifrar(dni);
         byte[] edad = (byte[]) ois.readObject();
         String edadUsuario = descifrar(edad);
         byte[] email = (byte[]) ois.readObject();
@@ -220,7 +231,7 @@ public class HiloServidor extends Thread {
         String username = descifrar(usuario);
         byte[] contrasena = (byte[]) ois.readObject();
         String contrasenaUsuario = descifrar(contrasena);
-        usuarioInfo = new String[]{nombreUsuario, apellidoUsuario, edadUsuario, emailUsuario, username, contrasenaUsuario};
+        usuarioInfo = new String[]{nombreUsuario, apellidoUsuario, dniUsuario, edadUsuario, emailUsuario, username, contrasenaUsuario};
         return usuarioInfo;
     }
 
@@ -309,44 +320,19 @@ public class HiloServidor extends Thread {
     }
 
     private ClienteBanco crearUsuario(String[] usuarioRegistrarInfo) throws NoSuchAlgorithmException {
-        System.out.println("Hasheando contrasena");
-        contrasenaHash = hashearContrasena(this.usuarioRegistrarInfo[5]);
         ClienteBanco clienteBanco = new ClienteBanco();
         clienteBanco.setNombre(this.usuarioRegistrarInfo[0]);
         clienteBanco.setApellido(this.usuarioRegistrarInfo[1]);
-        clienteBanco.setEdad(Integer.parseInt(this.usuarioRegistrarInfo[2]));
-        clienteBanco.setEmail(this.usuarioRegistrarInfo[3]);
-        clienteBanco.setUsuario(this.usuarioRegistrarInfo[4]);
-        clienteBanco.setContrasena(contrasenaHash);
+        clienteBanco.setDni(this.usuarioRegistrarInfo[2]);
+        clienteBanco.setEdad(Integer.parseInt(this.usuarioRegistrarInfo[3]));
+        clienteBanco.setEmail(this.usuarioRegistrarInfo[4]);
+        clienteBanco.setUsuario(this.usuarioRegistrarInfo[5]);
+        clienteBanco.setContrasena(this.usuarioRegistrarInfo[6]);
         //retorna objeto clienteBanco
         System.out.println("Se ha creado objeto cliente");
         return clienteBanco;
     }
 
-    /**
-     * Hashea la contraseña utilizando el algoritmo SHA-256 y devuelve el resultado en formato hexadecimal.
-     *
-     * @param contrasena La contraseña que queremos hashear.
-     * @return La representación en formato hexadecimal del hash de la contraseña.
-     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de hash especificado.
-     */
-    public String hashearContrasena(String contrasena) throws NoSuchAlgorithmException {
-
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.reset();
-        byte[] contrasenaByte = contrasena.getBytes();
-        md.update(contrasenaByte);
-        //esto es contrasena HASH
-        byte[] resumen = md.digest();
-
-        //para que devuelve como string
-        StringBuilder contrasenaHash = new StringBuilder();
-        for (byte b : resumen) {
-            contrasenaHash.append(String.format("%02x", b));
-        }
-        System.out.println("Contrasena se ha hasheado");
-        return contrasenaHash.toString();
-    }
 
 
     /**

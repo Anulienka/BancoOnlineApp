@@ -18,13 +18,15 @@ public class ClienteBanco{
     private String nombre;
     @Column(name = "apellido", nullable = false)
     private String apellido;
+    @Column(name = "dni", nullable = false)
+    private String dni;
     @Column(name = "edad")
     private int edad;
     @Column(name = "email", nullable = false)
     private String email;
-    @Column(name = "usuario", nullable = false, unique = true)
+    @Column(name = "usuario", nullable = false)
     private String usuario;
-    @Column(name = "contrasena", nullable = false, unique = true)
+    @Column(name = "contrasena", nullable = false)
     private String contrasena;
 
     @OneToMany(mappedBy = "clienteBanco", cascade = {CascadeType.PERSIST, CascadeType.REMOVE, CascadeType.MERGE})
@@ -32,6 +34,14 @@ public class ClienteBanco{
 
 
     public ClienteBanco() {
+    }
+
+    public String getDni() {
+        return dni;
+    }
+
+    public void setDni(String dni) {
+        this.dni = dni;
     }
 
     public List<Cuenta> getCuentas() {
