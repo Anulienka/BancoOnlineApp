@@ -13,6 +13,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * @author Anna
+ *
+ * La clase HiloServidor representa un hilo que gestiona conexiones de clientes del banco.
+
+ * Recibe informacion que escribe usuario en consola y le envia a cliente la informacion y mensajes
+ * Dependiendo que opcion elije cliente, hace operaciones en aplicacion
+ */
 public class HiloServidor extends Thread {
 
     private Socket cliente;
@@ -33,8 +41,13 @@ public class HiloServidor extends Thread {
     private List<String> numerosDeCuentas;
     private byte[] numCuentaCifrada;
     private String numCuentaUsuario;
-    private Double saldoDeCuenta;
 
+    /**
+     *
+     * Constructor de la clase HiloServidor.
+     *
+     * @param cliente El socket de conexión del cliente.
+     */
     public HiloServidor(Socket cliente) {
         this.cliente = cliente;
     }
@@ -155,7 +168,7 @@ public class HiloServidor extends Thread {
                         break;
                     case 4:
                         System.out.println("Buscando cuentas de cliente");
-                        cuentasCliente = controlador.buscarCuentasUsuario(usuarioActual);
+                        cuentasCliente = controlador.existeUsuario(usuarioActual.getUsuario()).getCuentas();
                         numerosDeCuentas = listarNumerosDeCuenta(cuentasCliente);
                         oos.writeObject(numerosDeCuentas);
                         //servidor recibe numero de cuenta de usuario cifrada
@@ -170,7 +183,7 @@ public class HiloServidor extends Thread {
                         break;
                     case 5:
                         System.out.println("Haciendo transferencia");
-                        cuentasCliente = controlador.buscarCuentasUsuario(usuarioActual);
+                        cuentasCliente = controlador.existeUsuario(usuarioActual.getUsuario()).getCuentas();
                         numerosDeCuentas = listarNumerosDeCuenta(cuentasCliente);
                         oos.writeObject(numerosDeCuentas);
                         //servidor recibe numero de cuenta de usuario cifrada
@@ -211,8 +224,8 @@ public class HiloServidor extends Thread {
                             //COMPROBAR SI HAY SALDO SUFICIENTE EN LA CUENTA
                             cuentaCliente = controlador.buscarCuenta(numCuentaUsuario);
                             boolean haySueldoSufuciente = (cuentaCliente.getSaldo() - Double.parseDouble(importe)) > 0;
+                            oos.writeBoolean(haySueldoSufuciente);
                             if (haySueldoSufuciente) {
-                                oos.writeUTF("SUFICIENTE");
                                 //el servidor se envia un código(cifrado)
                                 enviarCodigo();
                                 //recibe desde cliente si es valido el codigo

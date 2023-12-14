@@ -8,6 +8,15 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Clase que representa a un cliente de banco.
+ *
+ * Esta clase almacena información sobre un cliente (nombre, apellido, DNI, edad, email, nombre de usuario y contraseña)
+ * También mantiene una lista de cuentas asociadas al cliente.
+ *
+ * @Entity(name = "Clientes") Esta anotación se utiliza para mapear la clase a una entidad en la base de datos.
+ */
+
 @Entity(name = "Clientes")
 public class ClienteBanco{
     @Id
@@ -48,28 +57,12 @@ public class ClienteBanco{
         return cuentas;
     }
 
-    public void setCuentas(List<Cuenta> cuentas) {
-        this.cuentas = cuentas;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
 
-    public String getApellido() {
-        return apellido;
-    }
-
     public void setApellido(String apellido) {
         this.apellido = apellido;
-    }
-
-    public int getEdad() {
-        return edad;
     }
 
     public void setEdad(int edad) {

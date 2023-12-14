@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Clase que actúa como controlador en la aplicación bancaria, valida la inserciones de usuario y hace operaciones sobre BBDD.
+ */
 public class Controlador {
 
     private ClienteDAOImpl clienteDAO = new ClienteDAOImpl();
@@ -176,7 +179,7 @@ public class Controlador {
     }
 
     /**
-     * Valida codigo
+     * Valida codigo, que deberia tener 4 numeros
      *
      * @param codigo Codigo que ha insertado usuario por terminal
      * @return true si el codigo es valido, false si no es válido.
@@ -188,15 +191,15 @@ public class Controlador {
         return mat.matches();
     }
 
-    /**
+   /* *//**
      * Busca cuentas de usuario en BBDD
      *
      * @param usuarioActual Usuario de que cuentas queremos buscar
      * @return Lista de las cuentas de usuario
-     */
+     *//*
     public List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual) {
         return cuentaDAO.buscarCuentasUsuario(usuarioActual);
-    }
+    }*/
 
 
     /**
@@ -204,16 +207,28 @@ public class Controlador {
      *
      * @param numCuentaUsuario Numero de cuenta de que queremos ver el saldo actual
      * @return Saldo actual de la cuenta bancaria
-     */
+     *//*
     public Double verSaldoDeCuenta(String numCuentaUsuario) {
         return cuentaDAO.verSaldoDeCuenta(numCuentaUsuario);
     }
+*/
 
-
+    /**
+     * Busca la cuenta en BBDD segun numero de la cuenta
+     *
+     * @param numCuentaUsuario Numero de la cuenta que se esta buscando
+     * @return objeto de tipo Cuenta
+     */
     public Cuenta buscarCuenta(String numCuentaUsuario) {
         return cuentaDAO.buscarCuenta(numCuentaUsuario);
     }
 
+    /**
+     * Modifica la cuenta en BBDD
+     *
+     * @param cuenta Objeto tipo Cuenta, que se intenta modificar
+     * @return true si se ha modificado correctamente, false al contrario
+     */
     public boolean modificarCuenta(Cuenta cuenta) {
         Cuenta c = cuentaDAO.update(cuenta);
         if (c != null) {

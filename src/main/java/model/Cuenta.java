@@ -4,6 +4,14 @@ import jakarta.persistence.*;
 
 import java.io.Serializable;
 
+/**
+ * Clase que representa a una cuenta de banco.
+ *
+ * Esta clase almacena información sobre una cuenta (numero de cuenta y saldo)
+ * También almacena el cliente de que pertenece la cuenta.
+ *
+ * @Entity(name = "Cuentas") Esta anotación se utiliza para mapear la clase a una entidad en la base de datos.
+ */
 
 @Entity (name = "Cuentas")
 public class Cuenta{
@@ -22,10 +30,6 @@ public class Cuenta{
 
 
     public Cuenta() {
-    }
-
-    public Cuenta(String numCuenta) {
-        this.numCuenta = numCuenta;
     }
 
     public String getNumCuenta() {

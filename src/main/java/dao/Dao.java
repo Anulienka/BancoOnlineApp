@@ -45,6 +45,4 @@ abstract class Dao<T, K> {
         em.remove(t);
         entityTransaction.commit();
     }
-
-
 }

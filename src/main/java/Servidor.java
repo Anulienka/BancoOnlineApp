@@ -2,6 +2,11 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ * @author Anna
+ *
+ * La clase Servidor escucha y acepta conexiones de múltiples clientes.
+ */
 public class Servidor {
 
     final int PUERTO = 4444;
@@ -13,6 +18,7 @@ public class Servidor {
         Servidor s = new Servidor();
         s.initServer();
     }
+
 
     private void initServer() throws IOException {
 

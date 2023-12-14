@@ -10,6 +10,12 @@ import java.net.Socket;
 import java.security.*;
 import java.util.List;
 
+/**
+ * @author Anna
+ *
+ * La clase Cliente representa un cliente en la aplicación de banco
+ * Se conecta al servidor y permite a usuario comunicar con aplicacion de banco(servidor)
+ */
 public class Cliente {
 
     final int PUERTO = 4444;
@@ -27,7 +33,6 @@ public class Cliente {
     public static void main(String[] args) throws IOException {
         Cliente c = new Cliente();
         c.initClient();
-
     }
 
     private void initClient() throws IOException {
@@ -151,9 +156,7 @@ public class Cliente {
                                             oos.writeObject(numCuentaCifrada);
                                             //usuario envia elige si quiere hacer ingreso o gasto
                                             elegirOperacionBanco(oos, ois);
-                                            insertarCodigoTransaccion(ois, oos);
-                                            //recibe mensaje del servidor, si se ha hecho transaccion o no
-                                            System.out.println(ois.readUTF());
+                                            //insertarCodigoTransaccion(ois, oos);
                                             break;
                                     }
 
@@ -181,6 +184,20 @@ public class Cliente {
         cerrarFlujos(cliente, oos, ois);
     }
 
+    /**
+     * Recibe un código cifrado enviado por el servidor, lo descifre y pide al usuario que lo inserte correctamente,
+     * y luego envia al servidor true si ha codigo es valido o false si el usuario no ha metido 3 veces mismo codigo que ha enviado servidor.
+     *
+     * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
+     * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
+     * @throws IOException Si ocurre un error durante la comunicación con el servidor.
+     * @throws ClassNotFoundException Si no se puede cargar la clase de objeto al recibir datos del servidor.
+     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de cifrado especificado.
+     * @throws NoSuchPaddingException Si no se encuentra el algoritmo de relleno especificado.
+     * @throws InvalidKeyException Si se produce un error con la clave de cifrado.
+     * @throws IllegalBlockSizeException Si se produce un error durante el cifrado debido a un tamaño de bloque no válido.
+     * @throws BadPaddingException Si se produce un error durante el cifrado debido a un relleno incorrecto.
+     */
     private void insertarCodigoTransaccion(ObjectInputStream ois, ObjectOutputStream oos) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         // codigo cifrado desde servidor, que el usuario debe leerlo, descifrarlo e insertarlo correctamente.
         byte[] codigo = (byte[]) ois.readObject();
@@ -193,6 +210,19 @@ public class Cliente {
         oos.flush();
     }
 
+    /**
+     * Permite al usuario elegir entre realizar un ingreso o un gasto en la cuenta bancaria.
+     *
+     * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
+     * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
+     * @throws IOException Si ocurre un error durante la comunicación con el servidor.
+     * @throws NoSuchPaddingException Si no se encuentra el algoritmo de relleno especificado.
+     * @throws IllegalBlockSizeException Si se produce un error durante el cifrado debido a un tamaño de bloque no válido.
+     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de cifrado especificado.
+     * @throws BadPaddingException Si se produce un error durante el cifrado debido a un relleno incorrecto.
+     * @throws InvalidKeyException Si se produce un error con la clave de cifrado.
+     * @throws ClassNotFoundException Si no se puede cargar la clase de objeto al recibir datos del servidor.
+     */
     private void elegirOperacionBanco(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
         char opcion = 'O';
 
@@ -208,6 +238,8 @@ public class Cliente {
                 byte[] importeCifrado = cifrar(String.valueOf(importe));
                 oos.writeObject(importeCifrado);
                 insertarCodigoTransaccion(ois, oos);
+                //recibe mensaje del servidor, si se ha hecho transaccion o no
+                System.out.println(ois.readUTF());
                 break;
             } else if (opcion == 'G') {
                 oos.writeUTF("G");
@@ -215,8 +247,13 @@ public class Cliente {
                 double importe = insertarImporte();
                 byte[] importeCifrado = cifrar(String.valueOf(importe));
                 oos.writeObject(importeCifrado);
-                if(ois.readUTF().equals("SUFICIENTE")){
+                boolean saldoSuficiente = ois.readBoolean();
+                if(saldoSuficiente){
                     insertarCodigoTransaccion(ois, oos);
+                    System.out.println(ois.readUTF());
+                }else {
+                    System.out.println(ois.readUTF());
+                    break;
                 }
                 break;
             }
@@ -237,7 +274,7 @@ public class Cliente {
     }
 
     /**
-     * Inserta y comprueba un código ingresado por el usuario con codigo que ha enviaro servidor.
+     * Pide el usuario que inserte el codigo de 4 digitos y comprueba si el código ingresado coincide con codigo que ha enviaro servidor.
      * El usuario tiene 3 intentos para escribir el código correcto
      *
      * @param codigoServidor El código proporcionado por el servidor para comparación.
