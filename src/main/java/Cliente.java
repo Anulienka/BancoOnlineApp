@@ -95,11 +95,10 @@ public class Cliente {
                         } else if (mensajeBanco.equals("NS")) {
                             System.out.println("No se han aceptado normas de banco, cliente no ha sido registrado.\n");
                             break;
-                        }else if (mensajeBanco.equals("EXEMAIL")) {
+                        } else if (mensajeBanco.equals("EXEMAIL")) {
                             System.out.println("Usuario con mismo email ya existe\n");
                             break;
-                        }
-                        else if (mensajeBanco.equals("EXDNI")) {
+                        } else if (mensajeBanco.equals("EXDNI")) {
                             System.out.println("Usuario con mismo DNI ya existe\n");
                             break;
                         }
@@ -123,7 +122,7 @@ public class Cliente {
                                     System.out.println("\nElige opcion:");
                                     System.out.println("1. Crear cuenta bancaria");
                                     System.out.println("2. Ver saldo de cuenta bancaria");
-                                    System.out.println("3. Hacer transferencia");
+                                    System.out.println("3. Operaciones de cuenta bancaria");
 
                                     opcionMenuBanco = Integer.parseInt(br.readLine());
 
@@ -133,7 +132,6 @@ public class Cliente {
                                             oos.writeObject(3);
                                             mensajeBanco = ois.readUTF();
                                             System.out.println(mensajeBanco);
-
                                             break;
                                         case 2:
                                             oos.writeObject(4);
@@ -145,28 +143,18 @@ public class Cliente {
                                             break;
                                         case 3:
                                             oos.writeObject(5);
+                                            //usuario elige cuenta de cual quiere hacer transferencia
                                             numerosCuentasUsuario = (List<String>) ois.readObject();
                                             cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
                                             numCuentaCifrada = cifrar(cuentaUsuario);
                                             //primero envio numero de cuenta cifrada
                                             oos.writeObject(numCuentaCifrada);
-                                            //luego envio inporte cifrado
-                                            double importe = insertarImporte();
-                                            byte[] importeCifrado = cifrar(String.valueOf(importe));
-                                            oos.writeObject(importeCifrado);
-                                            // codigo cifrado desde servidor, que el usuario debe leerlo, descifrarlo e insertarlo correctamente.
-                                            byte[] codigo = (byte[]) ois.readObject();
-                                            //descifra el codigo
-                                            String codigoServidor = descifrar(codigo);
-                                            System.out.println(codigoServidor);
-                                            boolean codigoValido = insertarComprobarCodigo(codigoServidor);
-                                            //envia al servidor si es valido o no el codigo
-                                            oos.writeBoolean(codigoValido);
-                                            oos.flush();
-                                            //recibe mensaje del servidor, si se ha hecho importe o no
+                                            //usuario envia elige si quiere hacer ingreso o gasto
+                                            elegirOperacionBanco(oos, ois);
+                                            insertarCodigoTransaccion(ois, oos);
+                                            //recibe mensaje del servidor, si se ha hecho transaccion o no
                                             System.out.println(ois.readUTF());
                                             break;
-
                                     }
 
                                 } catch (NumberFormatException | IOException | NoSuchPaddingException |
@@ -193,6 +181,49 @@ public class Cliente {
         cerrarFlujos(cliente, oos, ois);
     }
 
+    private void insertarCodigoTransaccion(ObjectInputStream ois, ObjectOutputStream oos) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        // codigo cifrado desde servidor, que el usuario debe leerlo, descifrarlo e insertarlo correctamente.
+        byte[] codigo = (byte[]) ois.readObject();
+        //descifra el codigo
+        String codigoServidor = descifrar(codigo);
+        System.out.println(codigoServidor);
+        boolean codigoValido = insertarComprobarCodigo(codigoServidor);
+        //envia al servidor si es valido o no el codigo
+        oos.writeBoolean(codigoValido);
+        oos.flush();
+    }
+
+    private void elegirOperacionBanco(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
+        char opcion = 'O';
+
+        while (true) {
+            System.out.println("\nIngreso(I) / Gasto(G)");
+            opcion = br.readLine().toUpperCase().charAt(0);
+
+            if (opcion == 'I') {
+                oos.writeUTF("I");
+                oos.flush();
+                //luego envio inporte cifrado
+                double importe = insertarImporte();
+                byte[] importeCifrado = cifrar(String.valueOf(importe));
+                oos.writeObject(importeCifrado);
+                insertarCodigoTransaccion(ois, oos);
+                break;
+            } else if (opcion == 'G') {
+                oos.writeUTF("G");
+                oos.flush();
+                double importe = insertarImporte();
+                byte[] importeCifrado = cifrar(String.valueOf(importe));
+                oos.writeObject(importeCifrado);
+                if(ois.readUTF().equals("SUFICIENTE")){
+                    insertarCodigoTransaccion(ois, oos);
+                }
+                break;
+            }
+
+        }
+    }
+
     /**
      * Genera un par de claves para cliente con algoritmo RSA (pública y privada).
      *
@@ -216,23 +247,23 @@ public class Cliente {
     private boolean insertarComprobarCodigo(String codigoServidor) throws IOException {
         boolean codigoValido = false;
         String codigo = "";
-        System.out.println("Inserta codigo de la pantalla:");
-
         int contador = 0;
 
-        while (!codigoValido) {
+        System.out.println("Inserta codigo de la pantalla:");
+        while (codigoValido == false) {
             //usuario puede insertar codigo 3 veces
             if (contador <= 2) {
                 codigo = br.readLine();
                 //comprueba si tiene 4 numeros
                 boolean formatoValidoCodigo = controlador.validarCodigo(codigo);
-                if (formatoValidoCodigo) {
-                    if (codigoServidor.equals(codigo)) {
-                        codigoValido = true;
-                    } else {
-                        contador++;
-                    }
+                if (formatoValidoCodigo && codigoServidor.equals(codigo)) {
+                    codigoValido = true;
+                } else {
+                    System.out.println("Codigo incorrecto! Intenta otra vez!");
+                    contador++;
                 }
+            }else{
+                break;
             }
         }
         return codigoValido;
@@ -308,9 +339,7 @@ public class Cliente {
                 signature.initSign(privada);
                 signature.update(normasBanco.getBytes());
                 oos.writeObject(normasBanco);
-                //mensaje firmado
                 byte[] firma = signature.sign();
-                //envia mensaje firmado al servidor
                 oos.writeObject(firma);
                 break;
             } else if (opcion == 'N') {
@@ -393,7 +422,7 @@ public class Cliente {
                 System.out.println("Inserta importe: ");
                 importe = Double.parseDouble(br.readLine());
                 formatoValido = true;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 System.out.println("Opcion inválida. Intenta otra vez insertando numero.");
             }
         }
@@ -411,7 +440,6 @@ public class Cliente {
         String usuario;
         String contrasenaHasheada;
         String[] credenciales = new String[2];
-        ClienteBanco clienteBanco = new ClienteBanco();
 
         do {
             System.out.println("USUARIO (debe que tener 6 caracteres alfanumericos): ");
@@ -425,7 +453,6 @@ public class Cliente {
             contrasenaHasheada = hashearContrasena(contrasena);
         } while (!controlador.validarContrasena(contrasena));
 
-        //al HashMap anado usuario y contrasena que quiero enviar al servidor
         credenciales[0] = usuario;
         credenciales[1] = contrasenaHasheada;
 
@@ -435,7 +462,7 @@ public class Cliente {
     /**
      * Metodo para registrar a un nuevo cliente en el banco solicitando y validando su información personal.
      *
-     * @return Un array que contiene la información del cliente, en el orden: Nombre, Apellido, Edad, Email, Usuario, Contraseña.
+     * @return Un array que contiene la información del cliente, en el orden: Nombre, Apellido, DNI, Edad, Email, Usuario, Contraseña.
      * @throws IOException Si ocurre un error de entrada/salida durante la lectura.
      */
     private String[] registrarClienteBanco() throws IOException, NoSuchAlgorithmException {

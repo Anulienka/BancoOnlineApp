@@ -33,8 +33,9 @@ public class HiloServidor extends Thread {
     private List<String> numerosDeCuentas;
     private byte[] numCuentaCifrada;
     private String numCuentaUsuario;
+    private Double saldoDeCuenta;
 
-    public HiloServidor(Socket cliente){
+    public HiloServidor(Socket cliente) {
         this.cliente = cliente;
     }
 
@@ -83,8 +84,8 @@ public class HiloServidor extends Thread {
                             System.out.println("Registrando usuario");
                             //comprueba si existe usuario con mismo DNI, username y contrasena
                             if (controlador.existeUsuario(usuarioBanco.getUsuario()) == null) {
-                                if(controlador.existeDni(usuarioBanco.getDni()) == null){
-                                    if(controlador.existeEmail(usuarioBanco.getEmail()) == null){
+                                if (controlador.existeDni(usuarioBanco.getDni()) == null) {
+                                    if (controlador.existeEmail(usuarioBanco.getEmail()) == null) {
                                         if (controlador.insertarUsuario(usuarioBanco)) {
                                             //registrado
                                             oos.writeUTF("R");
@@ -92,12 +93,12 @@ public class HiloServidor extends Thread {
                                             //error
                                             oos.writeUTF("E");
                                         }
-                                    }else{
+                                    } else {
                                         oos.writeUTF("EXEMAIL");
                                     }
 
-                                }else{
-                                   oos.writeUTF("EXDNI");
+                                } else {
+                                    oos.writeUTF("EXDNI");
                                 }
                             } else {
                                 //ya existe usuario con mismo Username
@@ -161,9 +162,10 @@ public class HiloServidor extends Thread {
                         numCuentaCifrada = (byte[]) ois.readObject();
                         //luego la descifra
                         numCuentaUsuario = descifrar(numCuentaCifrada);
-                        Double saldoDeCuenta = controlador.verSaldoDeCuenta(numCuentaUsuario);
+                        System.out.println("Consultando saldo de la cuenta elegida");
+                        cuentaCliente = controlador.buscarCuenta(numCuentaUsuario);
                         //envia al cliente el saldo actual de la cuenta
-                        oos.writeDouble(saldoDeCuenta);
+                        oos.writeDouble(cuentaCliente.getSaldo());
                         oos.flush();
                         break;
                     case 5:
@@ -175,24 +177,62 @@ public class HiloServidor extends Thread {
                         numCuentaCifrada = (byte[]) ois.readObject();
                         //luego la descifra
                         numCuentaUsuario = descifrar(numCuentaCifrada);
-                        //servidor recibe importe cifrado
-                        byte[] importeCifrado = (byte[]) ois.readObject();
-                        //luego lo descifra
-                        String importe = descifrar(importeCifrado);
-                        //el servidor se envia un código(cifrado)
-                        enviarCodigo();
-                        //recibe desde cliente si es valido el codigo
-                        if(ois.readBoolean()){
-                            //si es valido, hace importe
+                        //que operacion de banco ha elegido cliente
+                        String operacion = ois.readUTF();
 
-                            //ACABAR HACER IMPORTE
+                        //-->Ingresar dinero a la cuenta
+                        if (operacion.equals("I")) {
+                            //servidor recibe importe cifrado
+                            byte[] importeCifrado = (byte[]) ois.readObject();
+                            //luego lo descifra
+                            String importe = descifrar(importeCifrado);
+                            //el servidor se envia un código(cifrado)
+                            enviarCodigo();
+                            //recibe desde cliente si es valido el codigo
+                            if (ois.readBoolean()) {
+                                cuentaCliente = controlador.buscarCuenta(numCuentaUsuario);
+                                cuentaCliente.setSaldo(cuentaCliente.getSaldo() + Double.parseDouble(importe));
+                                if (controlador.modificarCuenta(cuentaCliente)) {
+                                    oos.writeUTF("Importe se ha hecho correctamente.");
+                                } else {
+                                    oos.writeUTF("Error.");
+                                }
+                            } else {
+                                oos.writeUTF("Has excedido el número máximo de intentos. La transacción no se ha realizado.");
+                            }
+                            oos.flush();
 
-
-                            oos.writeUTF("Importe se ha hecho correctamente.");
-                        }else {
-                            oos.writeUTF("Importe ha sido rechasado.");
+                        } else {
+                            //-->Gastar dinero de la cuenta
+                            //servidor recibe importe cifrado
+                            byte[] importeCifrado = (byte[]) ois.readObject();
+                            //luego lo descifra
+                            String importe = descifrar(importeCifrado);
+                            //COMPROBAR SI HAY SALDO SUFICIENTE EN LA CUENTA
+                            cuentaCliente = controlador.buscarCuenta(numCuentaUsuario);
+                            boolean haySueldoSufuciente = (cuentaCliente.getSaldo() - Double.parseDouble(importe)) > 0;
+                            if (haySueldoSufuciente) {
+                                oos.writeUTF("SUFICIENTE");
+                                //el servidor se envia un código(cifrado)
+                                enviarCodigo();
+                                //recibe desde cliente si es valido el codigo
+                                if (ois.readBoolean()) {
+                                    //si es valido, hace importe
+                                    cuentaCliente.setSaldo(cuentaCliente.getSaldo() - Double.parseDouble(importe));
+                                    if (controlador.modificarCuenta(cuentaCliente)) {
+                                        oos.writeUTF("Transaccion se ha hecho correctamente.");
+                                    } else {
+                                        oos.writeUTF("Error.");
+                                    }
+                                } else {
+                                    oos.writeUTF("Has excedido el número máximo de intentos. La transacción no se ha realizado.");
+                                }
+                                oos.flush();
+                            } else {
+                                oos.writeUTF("No hay saldo suficiente para hacer una transaccion.");
+                            }
+                            oos.flush();
                         }
-                        oos.flush();
                         break;
                 }
 
@@ -205,6 +245,16 @@ public class HiloServidor extends Thread {
         cerrarFlujos(cliente, oos, ois);
     }
 
+    /**
+     * Genera un código aleatorio de 4 dígitos, lo cifra y lo envía al cliente.
+     *
+     * @throws NoSuchPaddingException    Si no se encuentra el algoritmo de relleno especificado.
+     * @throws IllegalBlockSizeException Si se produce un error durante el cifrado debido a un tamaño de bloque no válido.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de cifrado especificado.
+     * @throws BadPaddingException       Si se produce un error durante el cifrado debido a un relleno incorrecto.
+     * @throws InvalidKeyException       Si se produce un error con la clave de cifrado.
+     * @throws IOException               Si ocurre un error durante la escritura del código cifrado al cliente.
+     */
     private void enviarCodigo() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException {
         Random random = new Random();
         //Genera un numero aleatorio de 4 dígitos (entre 1000 y 9999)
@@ -235,7 +285,12 @@ public class HiloServidor extends Thread {
         return usuarioInfo;
     }
 
-
+    /**
+     * Obtiene una lista de números de cuenta a partir de una lista de cuentas.
+     *
+     * @param cuentasCliente La lista de cuentas del cliente.
+     * @return Una lista de números de cuents de cliente.
+     */
     private List<String> listarNumerosDeCuenta(List<Cuenta> cuentasCliente) {
         List<String> cuentas = new ArrayList<>();
         for (Cuenta c : cuentasCliente) {
@@ -281,7 +336,6 @@ public class HiloServidor extends Thread {
         return datoCifrado;
     }
 
-
     /**
      * Genera un par de claves para servidor con algoritmo RSA (pública y privada).
      *
@@ -296,6 +350,16 @@ public class HiloServidor extends Thread {
         publica = par.getPublic();
     }
 
+    /**
+     * Envía las normas del banco al cliente para su firma digital y verifica la firma recibida del cliente.
+     *
+     * @return true si las normas del banco fueron firmadas y verificadas correctament, false en caso contrario.
+     * @throws IOException              Si ocurre un error durante la comunicación con el cliente.
+     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de firma especificado.
+     * @throws InvalidKeyException      Si ocurre un error con la clave de firma.
+     * @throws SignatureException       Si ocurre un error durante la verificación de la firma.
+     * @throws ClassNotFoundException   Si no se puede cargar la clase de objeto al recibir la firma.
+     */
     private boolean enviarValidarNormasBancoFirmaDigital() throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, ClassNotFoundException {
         boolean check = false;
         //FIRMA DIGITAL - documento firmado digitalmente por el servidor
@@ -311,14 +375,20 @@ public class HiloServidor extends Thread {
         verificarFirma.update(normasBancoCliente.getBytes());
 
         //verificando
-        byte[] firma= (byte[]) ois.readObject();
+        byte[] firma = (byte[]) ois.readObject();
 
-        if(firma != null){
+        if (firma != null) {
             check = verificarFirma.verify(firma);
         }
         return check;
     }
 
+    /**
+     * Crea objeto ClienteBanco con sus atributos que recoge de array de Strings
+     *
+     * @param usuarioRegistrarInfo El array de Strings con informacion de cliente(nombre, apellido, DNI, edad, email, usuario, contrasena).
+     * @return objeto ClienteBanco, que queremos registrar
+     */
     private ClienteBanco crearUsuario(String[] usuarioRegistrarInfo) throws NoSuchAlgorithmException {
         ClienteBanco clienteBanco = new ClienteBanco();
         clienteBanco.setNombre(this.usuarioRegistrarInfo[0]);
@@ -332,8 +402,6 @@ public class HiloServidor extends Thread {
         System.out.println("Se ha creado objeto cliente");
         return clienteBanco;
     }
-
-
 
     /**
      * Crea y devuelve un número de cuenta bancaria para un cliente, asegurándose que numero de la cuenta es unico.
@@ -359,7 +427,6 @@ public class HiloServidor extends Thread {
 
         return numeroCuenta.toString();
     }
-
 
     /**
      * Cierra los flujos de comunicación y el socket asociado.

@@ -28,8 +28,6 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
             Query query = em.createQuery(HQL_COD);
             query.setParameter("usuario", usuario);
 
-
-            // Obtiene el pieza
             clienteBanco = (ClienteBanco) query.getSingleResult();
 
             // Realiza el commit de la transacción
@@ -62,8 +60,6 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
             Query query = em.createQuery(HQL_COD);
             query.setParameter("dni", dni);
 
-
-            // Obtiene el pieza
             clienteBanco = (ClienteBanco) query.getSingleResult();
 
             // Realiza el commit de la transacción
@@ -94,8 +90,6 @@ public class ClienteDAOImpl extends Dao<ClienteBanco, Integer> implements Client
             Query query = em.createQuery(HQL_COD);
             query.setParameter("email", email);
 
-
-            // Obtiene el pieza
             clienteBanco = (ClienteBanco) query.getSingleResult();
 
             // Realiza el commit de la transacción

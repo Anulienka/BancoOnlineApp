@@ -7,9 +7,11 @@ import java.util.List;
 
 public interface CuentaDAO {
 
-    public abstract List<String> listaNumerosTodasCuentas();
+    List<String> listaNumerosTodasCuentas();
 
     List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual);
 
     Double verSaldoDeCuenta(String numCuentaUsuario);
+
+    Cuenta buscarCuenta(String numeroCuenta);
 }

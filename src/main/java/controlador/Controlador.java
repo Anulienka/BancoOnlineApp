@@ -17,6 +17,7 @@ public class Controlador {
 
     /**
      * Inserta nuevo usuario a BBDD
+     *
      * @param clienteBanco Usuario a que queremos registrar
      * @return true si usuario ha sido insertado y false al contrario.
      */
@@ -177,11 +178,11 @@ public class Controlador {
     /**
      * Valida codigo
      *
-     * @param codigo Condigo que ha insertado usuario por terminal
+     * @param codigo Codigo que ha insertado usuario por terminal
      * @return true si el codigo es valido, false si no es válido.
      */
     public boolean validarCodigo(String codigo) {
-        Pattern pat = Pattern.compile("[1-9]{4}");
+        Pattern pat = Pattern.compile("[0-9]{4}");
         Matcher mat = pat.matcher(codigo);
         //necesita tener mas que 18 anos
         return mat.matches();
@@ -209,5 +210,16 @@ public class Controlador {
     }
 
 
+    public Cuenta buscarCuenta(String numCuentaUsuario) {
+        return cuentaDAO.buscarCuenta(numCuentaUsuario);
+    }
 
+    public boolean modificarCuenta(Cuenta cuenta) {
+        Cuenta c = cuentaDAO.update(cuenta);
+        if (c != null) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

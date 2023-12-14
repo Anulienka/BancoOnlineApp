@@ -30,7 +30,6 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
             String HQL_COD = "SELECT numCuenta FROM Cuentas";
             Query query = em.createQuery(HQL_COD);
 
-            // Obtiene la lista de piezas
             numCuentas = query.getResultList();
 
             // Realiza el commit de la transacción
@@ -59,7 +58,6 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
             Query query = em.createQuery(HQL_COD);
             query.setParameter("idUsuario", usuarioActual.getId());
 
-            // Obtiene la lista de piezas
             cuentasUsuario = query.getResultList();
 
             // Realiza el commit de la transacción
@@ -88,7 +86,6 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
             Query query = em.createQuery(HQL_COD);
             query.setParameter("numCuentaUsuario", numCuentaUsuario);
 
-            // Obtiene el pieza
             saldoActual = (Double) query.getSingleResult();
 
             // Realiza el commit de la transacción
@@ -106,5 +103,33 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
             e.printStackTrace();
         }
         return saldoActual;
+    }
+
+    @Override
+    public Cuenta buscarCuenta(String numeroCuenta) {
+        Cuenta cuenta = null;
+        EntityTransaction entityTransaction = em.getTransaction();
+        entityTransaction.begin();
+
+
+        try {
+            String HQL_COD = "FROM Cuentas c WHERE c.numCuenta = :numeroCuenta";
+            Query query = em.createQuery(HQL_COD);
+            query.setParameter("numeroCuenta", numeroCuenta);
+
+            cuenta = (Cuenta) query.getSingleResult();
+
+            // Realiza el commit de la transacción
+            entityTransaction.commit();
+
+        } catch (Exception e) {
+            // Maneja las excepciones, realiza rollback si es necesario
+            if (entityTransaction.isActive()) {
+                entityTransaction.rollback();
+            }
+            e.printStackTrace();
+        }
+
+        return cuenta;
     }
 }
