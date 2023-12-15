@@ -1,0 +1,8 @@
+INSERT INTO Clientes (nombre, apellido, dni, edad, email, usuario, contrasena) VALUES('Anna', 'Lomenova', '12345678E', 31, 'a@mail.com', 'Anna12', '178f6355d4ea0f62ba28ddec0ce08b9a2bd12f81781128d94cfe24f5476de785');
+INSERT INTO Clientes (nombre, apellido, dni, edad, email, usuario, contrasena) VALUES('Pepe', 'Perez', '12345008E', 45, 'p@mail.com', 'Pepe12', '2e4b04218e30172ffc8e0841ef83ade5858c680c7325060a01ba6787c234e2a6');
+INSERT INTO Clientes (nombre, apellido, dni, edad, email, usuario, contrasena) VALUES('Sara', 'Sancez', '12345678D', 60, 's@mail.com', 'Sara12', '0ee4b0733045cbd2684e150d5a02c2f8edb4ee6c20c2b42a229575d320c74bec');
+
+INSERT INTO Cuentas (numCuenta, saldo, cliente_id) VALUES('ES4181862000135272298369', 100.0, 1);
+INSERT INTO Cuentas (numCuenta, saldo, cliente_id) VALUES('ES4571751827799932119353', 0.0, 1);
+INSERT INTO Cuentas (numCuenta, saldo, cliente_id) VALUES('ES1800605004146311535417', 200.0, 2);
+

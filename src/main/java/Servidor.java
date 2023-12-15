@@ -23,12 +23,12 @@ public class Servidor {
     private void initServer() throws IOException {
 
         servidor = new ServerSocket(PUERTO);
-        System.out.println("Servidor arrancado..");
+        System.out.println("Servidor funcionando..");
 
         while (true) {
             //se conecta cliente con servidor
             cliente = servidor.accept();
-            System.out.println("Nuevo cliente conectado");
+            System.out.println("Nuevo cliente se ha conectado");
             HiloServidor hiloServidor = new HiloServidor(cliente);
             hiloServidor.start();
         }

@@ -45,6 +45,30 @@ public class ClienteBanco{
     public ClienteBanco() {
     }
 
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public String getApellido() {
+        return apellido;
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
+    }
+
     public String getDni() {
         return dni;
     }
@@ -53,16 +77,8 @@ public class ClienteBanco{
         this.dni = dni;
     }
 
-    public List<Cuenta> getCuentas() {
-        return cuentas;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public void setApellido(String apellido) {
-        this.apellido = apellido;
+    public int getEdad() {
+        return edad;
     }
 
     public void setEdad(int edad) {
@@ -93,8 +109,11 @@ public class ClienteBanco{
         this.contrasena = contrasena;
     }
 
-    public Integer getId() {
-        return id;
+    public List<Cuenta> getCuentas() {
+        return cuentas;
     }
 
+    public void setCuentas(List<Cuenta> cuentas) {
+        this.cuentas = cuentas;
+    }
 }

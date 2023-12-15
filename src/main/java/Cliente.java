@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * @author Anna
- * <p>
+ * 
  * La clase Cliente representa un cliente en la aplicación de banco
  * Se conecta al servidor y permite a usuario comunicar con aplicacion de banco(servidor)
  */
@@ -60,7 +60,7 @@ public class Cliente {
         while (cliente.isConnected()) {
 
             try {
-                System.out.println("****** BIENVENIDO A BANCO ******");
+                System.out.println("****** BIENVENIDO A BANCO ESTRELLA FFINANCIERA (BEF) ******");
                 System.out.println("1. Registrarse");
                 System.out.println("2. Iniciar sesion");
 
@@ -127,7 +127,7 @@ public class Cliente {
                                                 }else{
                                                     numCuentaCifrada = cifrar(cuentaUsuario);
                                                     oos.writeObject(numCuentaCifrada);
-                                                    System.out.println("Saldo actual de la cuenta: " + ois.readDouble() + "\n");
+                                                    System.out.println("Saldo actual de la cuenta: " + ois.readDouble() + " €\n");
                                                 }
 
                                                 break;
@@ -172,6 +172,17 @@ public class Cliente {
         cerrarFlujos(cliente, oos, ois);
     }
 
+
+    /**
+     * Registra un nuevo cliente en la aplicacion de banco, pidiendo información necesaria
+     * como nombre, apellido, DNI, edad, email, usuario y contraseña. Se valida cada campo
+     * antes de enviarlo al servidor para asegurar datos correctos.
+     *
+     * @param oos ObjectOutputStream para enviar datos al servidor.
+     * @param ois ObjectInputStream para recibir datos del servidor.
+     * @throws IOException             Si hay un error en la operación de entrada/salida.
+     * @throws NoSuchAlgorithmException Si el algoritmo de hash utilizado para la contraseña no está disponible.
+     */
     private void registrarCliente(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchAlgorithmException {
         String dni;
         String email;
@@ -215,7 +226,7 @@ public class Cliente {
                 if(dniNoExiste){
                     break;
                 }else{
-                    System.out.println("Cliente con mismo DNI ya existe");
+                    System.out.println("Cliente con mismo DNI ya existe.");
                 }
             }
         }
@@ -289,7 +300,7 @@ public class Cliente {
         byte[] codigo = (byte[]) ois.readObject();
         //descifra el codigo
         String codigoServidor = descifrar(codigo);
-        System.out.println(codigoServidor);
+        System.out.println("\n" + codigoServidor);
         boolean codigoValido = insertarComprobarCodigo(codigoServidor);
         //envia al servidor si es valido o no el codigo
         oos.writeBoolean(codigoValido);
@@ -297,7 +308,7 @@ public class Cliente {
     }
 
     /**
-     * Permite al usuario elegir entre realizar un ingreso o un gasto en la cuenta bancaria.
+     * Permite al usuario elegir entre realizar un ingreso o una retirada en la cuenta bancaria.
      *
      * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
      * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
@@ -313,7 +324,7 @@ public class Cliente {
         char opcion = 'O';
 
         while (true) {
-            System.out.println("\nIngreso(I) / Gasto(G)");
+            System.out.println("\nIngreso(I) / Retirada(R)");
             opcion = br.readLine().toUpperCase().charAt(0);
 
             if (opcion == 'I') {
@@ -327,8 +338,8 @@ public class Cliente {
                 //recibe mensaje del servidor, si se ha hecho transaccion o no
                 System.out.println(ois.readUTF());
                 break;
-            } else if (opcion == 'G') {
-                oos.writeUTF("G");
+            } else if (opcion == 'R') {
+                oos.writeUTF("R");
                 oos.flush();
                 double importe = insertarImporte();
                 byte[] importeCifrado = cifrar(String.valueOf(importe));
@@ -584,75 +595,6 @@ public class Cliente {
         credenciales[1] = contrasenaHasheada;
 
         return credenciales;
-    }
-
-    /**
-     * Metodo para registrar a un nuevo cliente en el banco solicitando y validando su información personal.
-     *
-     * @return Un array que contiene la información del cliente, en el orden: Nombre, Apellido, DNI, Edad, Email, Usuario, Contraseña.
-     * @throws IOException Si ocurre un error de entrada/salida durante la lectura.
-     */
-    private String[] registrarClienteBanco() throws IOException, NoSuchAlgorithmException {
-        String[] infoCliente = new String[7];
-
-        String dni;
-        String email;
-        String contrasena;
-        String nombre;
-        String usuario;
-        String apellido;
-        String edad = null;
-
-        do {
-            System.out.print("Nombre: ");
-            nombre = br.readLine();
-            infoCliente[0] = nombre.substring(0, 1).toUpperCase() + nombre.substring(1);
-        } while (!controlador.validarNombre(nombre));
-
-        do {
-            System.out.print("Apellido: ");
-            apellido = br.readLine();
-            infoCliente[1] = apellido.substring(0, 1).toUpperCase() + apellido.substring(1);
-        } while (!controlador.validarApellido(apellido));
-
-        do {
-            System.out.print("DNI: ");
-            dni = br.readLine();
-            infoCliente[2] = dni.substring(0, 8) + dni.substring(8).toUpperCase();
-        } while (!controlador.validarDNI(dni));
-
-        do {
-            System.out.print("Edad: ");
-            try {
-                edad = br.readLine();
-                infoCliente[3] = edad;
-            } catch (NumberFormatException e) {
-                System.out.println("Ingresa un número válido para la edad.");
-            }
-        } while (!controlador.validarEdad(edad));
-
-        do {
-            System.out.print("Email: ");
-            email = br.readLine();
-            infoCliente[4] = email;
-        } while (!controlador.validarEmail(email));
-
-        do {
-            System.out.print("Usuario (debe que tener 6 caracteres alfanumericos): ");
-            usuario = br.readLine();
-            infoCliente[5] = usuario;
-        } while (!controlador.validarUsuario(usuario));
-
-        do {
-            System.out.println("Contraseña: ");
-            System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
-            contrasena = br.readLine();
-            String contrasenaHasheada = hashearContrasena(contrasena);
-            infoCliente[6] = contrasenaHasheada;
-        } while (!controlador.validarContrasena(contrasena));
-
-
-        return infoCliente;
     }
 
     /**
