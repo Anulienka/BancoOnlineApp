@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * @author Anna
- *
+ * <p>
  * La clase Cliente representa un cliente en la aplicación de banco
  * Se conecta al servidor y permite a usuario comunicar con aplicacion de banco(servidor)
  */
@@ -68,110 +68,98 @@ public class Cliente {
 
                 switch (opcionMenu) {
                     case 1:
-                        System.out.println("\n****** FORMULARIO DE REGISTRACION DE NUEVO CLIENTE ******");
-                        oos.writeObject(1);
-                        //array con toda la informacion de cliente
-                        clienteBancoInfo = registrarClienteBanco();
-                        // Envia el array con informacion de cliente que se quiere registrar
-                        oos.writeObject(clienteBancoInfo);
-
-
-                        //****** INFO CIFRADA ***
-                        //cada informacion se cifra y envia al servidor
-//                        for (int i = 0; i < clienteBancoInfo.length; i++) {
-//                            byte[] datoCifrado = cifrarInfoUsuario(clienteBancoInfo[i])
-//                            oos.writeObject(datoCifrado)
-//                        }
-
-                        //FIRMA DIGITAL - documento firmado digitalmente por el servidor
-                        //firmar documento
-                        firmarDocumento(ois, oos);
-                        //recibe mensaje del banco
-                        mensajeBanco = ois.readUTF();
-                        if (mensajeBanco.equals("R")) {
-                            System.out.println("¡Usuario ha sido registrado con éxito y puede usar la aplicación del banco!\n");
-                            //no pongo break aqui, porque usuario puede iniciar sesion si esta registrado, sin que elije en menu
-                        } else if (mensajeBanco.equals("E")) {
-                            System.out.println("Error en registrar.");
-                            break;
-                        } else if (mensajeBanco.equals("EX")) {
-                            System.out.println("El usuario ya está en uso. Por favor, elige otro.\n");
-                            break;
-                        } else if (mensajeBanco.equals("NS")) {
-                            System.out.println("No se han aceptado normas de banco, cliente no ha sido registrado.\n");
-                            break;
-                        } else if (mensajeBanco.equals("EXEMAIL")) {
-                            System.out.println("Usuario con mismo email ya existe\n");
-                            break;
-                        } else if (mensajeBanco.equals("EXDNI")) {
-                            System.out.println("Usuario con mismo DNI ya existe\n");
-                            break;
+                        while (true) {
+                            System.out.println("\n****** FORMULARIO DE REGISTRACION DE NUEVO CLIENTE ******");
+                            oos.writeObject(1);
+                            registrarCliente(oos, ois);
+                            //FIRMA DIGITAL
+                            firmarDocumento(ois, oos);
+                            //recibe mensaje del banco
+                            mensajeBanco = ois.readUTF();
+                            if (mensajeBanco.equals("R")) {
+                                System.out.println("¡Usuario ha sido registrado con éxito y puede usar la aplicación del banco!\n");
+                                break;
+                            } else if (mensajeBanco.equals("E")) {
+                                System.out.println("Error en registrar.");
+                            } else if (mensajeBanco.equals("NS")) {
+                                System.out.println("No se han aceptado normas de banco, cliente no ha sido registrado.\n");
+                            }
                         }
 
                     case 2:
-                        System.out.println("\n****** INICIAR SESION ******");
-                        System.out.println("Para poder realizar operaciones bancarias, \nse necesita iniciar sesion insertando usuario y contraseña.\n");
-                        oos.writeObject(2);
-                        String[] credenciales = iniciarSesion();
-                        //envio al servidor usuario y contrasena de cliente para que lo valida
-                        oos.writeObject(credenciales);
-                        //informacion que llega desde servidor
-                        String valido = ois.readUTF();
-                        if (valido.equals("V")) {
-                            int opcionMenuBanco = -1;
-                            //entra en opcion de banco
-                            System.out.println("\n****** BIENVENIDO CLIENTE " + credenciales[0].toUpperCase() + " ******");
-                            while (true) {
+                        while (true) {
+                            System.out.println("\n****** INICIAR SESION ******");
+                            System.out.println("Para poder realizar operaciones bancarias, \nse necesita iniciar sesion insertando usuario y contraseña.\n");
+                            oos.writeObject(2);
+                            String[] credenciales = iniciarSesion();
+                            //envio al servidor usuario y contrasena de cliente para que lo valida
+                            oos.writeObject(credenciales);
+                            //informacion que llega desde servidor
+                            String valido = ois.readUTF();
+                            if (valido.equals("V")) {
+                                int opcionMenuBanco = -1;
+                                //entra en opcion de banco
+                                System.out.println("\n****** BIENVENIDO CLIENTE " + credenciales[0].toUpperCase() + " ******");
+                                while (true) {
 
-                                try {
-                                    System.out.println("\nElige opcion:");
-                                    System.out.println("1. Crear cuenta bancaria");
-                                    System.out.println("2. Ver saldo de cuenta bancaria");
-                                    System.out.println("3. Operaciones de cuenta bancaria");
+                                    try {
+                                        System.out.println("\nElige opcion:");
+                                        System.out.println("1. Crear cuenta bancaria");
+                                        System.out.println("2. Ver saldo de cuenta bancaria");
+                                        System.out.println("3. Operaciones de cuenta bancaria");
 
-                                    opcionMenuBanco = Integer.parseInt(br.readLine());
+                                        opcionMenuBanco = Integer.parseInt(br.readLine());
 
-                                    switch (opcionMenuBanco) {
-                                        case 1:
-                                            //envio a servidor que quiero crear una cuenta nueva
-                                            oos.writeObject(3);
-                                            mensajeBanco = ois.readUTF();
-                                            System.out.println(mensajeBanco);
-                                            break;
-                                        case 2:
-                                            oos.writeObject(4);
-                                            numerosCuentasUsuario = (List<String>) ois.readObject();
-                                            cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
-                                            numCuentaCifrada = cifrar(cuentaUsuario);
-                                            oos.writeObject(numCuentaCifrada);
-                                            System.out.println("Saldo actual de la cuenta: " + ois.readDouble() + "\n");
-                                            break;
-                                        case 3:
-                                            oos.writeObject(5);
-                                            //usuario elige cuenta de cual quiere hacer transferencia
-                                            numerosCuentasUsuario = (List<String>) ois.readObject();
-                                            cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
-                                            numCuentaCifrada = cifrar(cuentaUsuario);
-                                            //primero envio numero de cuenta cifrada
-                                            oos.writeObject(numCuentaCifrada);
-                                            //usuario envia elige si quiere hacer ingreso o gasto
-                                            elegirOperacionBanco(oos, ois);
-                                            //insertarCodigoTransaccion(ois, oos);
-                                            break;
+                                        switch (opcionMenuBanco) {
+                                            case 1:
+                                                //envio a servidor que quiero crear una cuenta nueva
+                                                oos.writeObject(3);
+                                                mensajeBanco = ois.readUTF();
+                                                System.out.println(mensajeBanco);
+                                                break;
+                                            case 2:
+                                                oos.writeObject(4);
+                                                numerosCuentasUsuario = (List<String>) ois.readObject();
+                                                cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
+                                                if(cuentaUsuario.equals("")){
+                                                  oos.writeObject(null);
+                                                  double noHayCuenta = ois.readDouble();
+                                                }else{
+                                                    numCuentaCifrada = cifrar(cuentaUsuario);
+                                                    oos.writeObject(numCuentaCifrada);
+                                                    System.out.println("Saldo actual de la cuenta: " + ois.readDouble() + "\n");
+                                                }
+
+                                                break;
+                                            case 3:
+                                                oos.writeObject(5);
+                                                //usuario elige cuenta de cual quiere hacer transferencia
+                                                numerosCuentasUsuario = (List<String>) ois.readObject();
+                                                cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
+                                                if(cuentaUsuario.equals("")){
+                                                    oos.writeObject(null);
+                                                }else{
+                                                    numCuentaCifrada = cifrar(cuentaUsuario);
+                                                    //primero envio numero de cuenta cifrada
+                                                    oos.writeObject(numCuentaCifrada);
+                                                    //usuario envia elige si quiere hacer ingreso o gasto
+                                                    elegirOperacionBanco(oos, ois);
+                                                    //insertarCodigoTransaccion(ois, oos);
+                                                }
+                                                break;
+                                        }
+
+                                    } catch (NumberFormatException | IOException | NoSuchPaddingException |
+                                             IllegalBlockSizeException | BadPaddingException e) {
+                                        throw new RuntimeException(e);
                                     }
-
-                                } catch (NumberFormatException | IOException | NoSuchPaddingException |
-                                         IllegalBlockSizeException | BadPaddingException e) {
-                                    throw new RuntimeException(e);
                                 }
+                            } else if (valido.equals("NV")) {
+                                System.out.println("La contraseña proporcionada es incorrecta. Por favor, inténtalo de nuevo.\n");
+                            } else {
+                                System.out.println("No existe cliente registrado con el usuario proporcionado.\n");
                             }
-
-                        } else if (valido.equals("NV")) {
-                            System.out.println("Contraseña incorrecta.");
-                        } else {
-                            System.out.println("No existe usuario con Username insertado.");
                         }
-                        break;
                 }
 
 
@@ -184,19 +172,117 @@ public class Cliente {
         cerrarFlujos(cliente, oos, ois);
     }
 
+    private void registrarCliente(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchAlgorithmException {
+        String dni;
+        String email;
+        String contrasena;
+        String nombre;
+        String usuario;
+        String apellido;
+        String edad = null;
+
+        do {
+            System.out.print("Nombre: ");
+            nombre = br.readLine();
+            if(controlador.validarNombre(nombre.substring(0, 1).toUpperCase() + nombre.substring(1))){
+                nombre = nombre.substring(0, 1).toUpperCase() + nombre.substring(1);
+                oos.writeUTF(nombre);
+                oos.flush();
+                break;
+            }
+        } while (true);
+
+
+        do {
+            System.out.print("Apellido: ");
+            apellido = br.readLine();
+            if(controlador.validarApellido(apellido.substring(0, 1).toUpperCase() + apellido.substring(1))){
+                apellido = apellido.substring(0, 1).toUpperCase() + apellido.substring(1);
+                oos.writeUTF(apellido);
+                oos.flush();
+                break;
+            }
+        } while (true);
+
+
+        while (true){
+            System.out.print("DNI: ");
+            dni = br.readLine();
+            if (controlador.validarDNI(dni)){
+                oos.writeUTF(dni.substring(0, 8) + dni.substring(8).toUpperCase());
+                oos.flush();
+                boolean dniNoExiste = ois.readBoolean();
+                if(dniNoExiste){
+                    break;
+                }else{
+                    System.out.println("Cliente con mismo DNI ya existe");
+                }
+            }
+        }
+
+        do {
+            System.out.print("Edad: ");
+            edad = br.readLine();
+            if(controlador.validarEdad(edad)){
+                oos.writeUTF(edad);
+                oos.flush();
+                break;
+            }
+        } while (true);
+
+
+        do {
+            System.out.print("Email: ");
+            email = br.readLine();
+            if(controlador.validarEmail(email)){
+                oos.writeUTF(email);
+                oos.flush();
+                break;
+            }
+        } while (true);
+
+
+        while (true){
+            System.out.print("Usuario (debe que tener 6 caracteres alfanumericos): ");
+            usuario = br.readLine();
+            if (controlador.validarUsuario(usuario)){
+                oos.writeUTF(usuario);
+                oos.flush();
+                boolean usernameNoExiste = ois.readBoolean();
+                if(usernameNoExiste){
+                    break;
+                }else{
+                    System.out.println("Cliente con mismo usuario ya existe.");
+                }
+            }
+        }
+
+        do {
+            System.out.println("Contraseña: ");
+            System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
+            contrasena = br.readLine();
+            if(controlador.validarContrasena(contrasena)){
+                String contrasenaHasheada = hashearContrasena(contrasena);
+                oos.writeUTF(contrasenaHasheada);
+                oos.flush();
+                break;
+            }
+        } while (true);
+    }
+
     /**
      * Recibe un código cifrado enviado por el servidor, lo descifre y pide al usuario que lo inserte correctamente,
      * y luego envia al servidor true si ha codigo es valido o false si el usuario no ha metido 3 veces mismo codigo que ha enviado servidor.
      *
      * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
      * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
-     * @throws IOException Si ocurre un error durante la comunicación con el servidor.
-     * @throws ClassNotFoundException Si no se puede cargar la clase de objeto al recibir datos del servidor.
-     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de cifrado especificado.
-     * @throws NoSuchPaddingException Si no se encuentra el algoritmo de relleno especificado.
-     * @throws InvalidKeyException Si se produce un error con la clave de cifrado.
+     * @throws IOException               Si ocurre un error durante la comunicación con el servidor.
+     * @throws ClassNotFoundException    Si no se puede cargar la clase de objeto al recibir datos del servidor.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de cifrado especificado.
+     * @throws NoSuchPaddingException    Si no se encuentra el algoritmo de relleno especificado.
+     * @throws InvalidKeyException       Si se produce un error con la clave de cifrado.
      * @throws IllegalBlockSizeException Si se produce un error durante el cifrado debido a un tamaño de bloque no válido.
-     * @throws BadPaddingException Si se produce un error durante el cifrado debido a un relleno incorrecto.
+     * @throws BadPaddingException       Si se produce un error durante el cifrado debido a un relleno incorrecto.
      */
     private void insertarCodigoTransaccion(ObjectInputStream ois, ObjectOutputStream oos) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         // codigo cifrado desde servidor, que el usuario debe leerlo, descifrarlo e insertarlo correctamente.
@@ -215,13 +301,13 @@ public class Cliente {
      *
      * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
      * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
-     * @throws IOException Si ocurre un error durante la comunicación con el servidor.
-     * @throws NoSuchPaddingException Si no se encuentra el algoritmo de relleno especificado.
+     * @throws IOException               Si ocurre un error durante la comunicación con el servidor.
+     * @throws NoSuchPaddingException    Si no se encuentra el algoritmo de relleno especificado.
      * @throws IllegalBlockSizeException Si se produce un error durante el cifrado debido a un tamaño de bloque no válido.
-     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de cifrado especificado.
-     * @throws BadPaddingException Si se produce un error durante el cifrado debido a un relleno incorrecto.
-     * @throws InvalidKeyException Si se produce un error con la clave de cifrado.
-     * @throws ClassNotFoundException Si no se puede cargar la clase de objeto al recibir datos del servidor.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de cifrado especificado.
+     * @throws BadPaddingException       Si se produce un error durante el cifrado debido a un relleno incorrecto.
+     * @throws InvalidKeyException       Si se produce un error con la clave de cifrado.
+     * @throws ClassNotFoundException    Si no se puede cargar la clase de objeto al recibir datos del servidor.
      */
     private void elegirOperacionBanco(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
         char opcion = 'O';
@@ -248,10 +334,10 @@ public class Cliente {
                 byte[] importeCifrado = cifrar(String.valueOf(importe));
                 oos.writeObject(importeCifrado);
                 boolean saldoSuficiente = ois.readBoolean();
-                if(saldoSuficiente){
+                if (saldoSuficiente) {
                     insertarCodigoTransaccion(ois, oos);
                     System.out.println(ois.readUTF());
-                }else {
+                } else {
                     System.out.println(ois.readUTF());
                     break;
                 }
@@ -299,7 +385,7 @@ public class Cliente {
                     System.out.println("Codigo incorrecto! Intenta otra vez!");
                     contador++;
                 }
-            }else{
+            } else {
                 break;
             }
         }
@@ -418,27 +504,31 @@ public class Cliente {
         int contador = 1;
         boolean opcionValida = false;
         int opcionCuenta = 0;
-        String numCuenta = null;
+        String numCuenta = "";
 
-        System.out.println("");
-        for (String c : cuentasUsuario) {
-            System.out.println(contador + ". " + c);
-            contador++;
-        }
+        if(cuentasUsuario.isEmpty()){
+            System.out.println("Usuario no tiene cuenta asignada. Hay que crear cuenta primero.");
+        }else{
+            System.out.println("");
+            for (String c : cuentasUsuario) {
+                System.out.println(contador + ". " + c);
+                contador++;
+            }
 
-        while (!opcionValida) {
-            try {
-                System.out.println("Elije cuenta bancaria:");
-                opcionCuenta = Integer.parseInt(br.readLine());
-                if (opcionCuenta < 1 || opcionCuenta > cuentasUsuario.size()) {
-                    System.out.println("Opcion inválida.");
-                } else {
-                    //retorna empleado elegido
-                    numCuenta = cuentasUsuario.get(opcionCuenta - 1);
-                    opcionValida = true;
+            while (!opcionValida) {
+                try {
+                    System.out.println("Elije cuenta bancaria:");
+                    opcionCuenta = Integer.parseInt(br.readLine());
+                    if (opcionCuenta < 1 || opcionCuenta > cuentasUsuario.size()) {
+                        System.out.println("Opcion inválida.");
+                    } else {
+                        //retorna empleado elegido
+                        numCuenta = cuentasUsuario.get(opcionCuenta - 1);
+                        opcionValida = true;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Opcion inválida. Intenta otra vez insertando numero.");
                 }
-            } catch (Exception e) {
-                System.out.println("Opcion inválida. Intenta otra vez insertando numero.");
             }
         }
 
@@ -517,7 +607,6 @@ public class Cliente {
             System.out.print("Nombre: ");
             nombre = br.readLine();
             infoCliente[0] = nombre.substring(0, 1).toUpperCase() + nombre.substring(1);
-
         } while (!controlador.validarNombre(nombre));
 
         do {

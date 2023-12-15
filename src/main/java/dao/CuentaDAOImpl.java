@@ -4,6 +4,7 @@ import idao.CuentaDAO;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
+import model.ClienteBanco;
 import model.Cuenta;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,7 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
         return numCuentas;
     }
 
-    /*@Override
+    @Override
     public List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual) {
         List<Cuenta> cuentasUsuario = new ArrayList<>();
         EntityTransaction entityTransaction = em.getTransaction();
@@ -69,9 +70,9 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
         }
 
         return cuentasUsuario;
-    }*/
+    }
 
-    @Override
+    /*@Override
     public Double verSaldoDeCuenta(String numCuentaUsuario) {
         Double saldoActual = 0.0;
         EntityTransaction entityTransaction = em.getTransaction();
@@ -100,7 +101,7 @@ public class CuentaDAOImpl extends Dao<Cuenta,Integer> implements CuentaDAO {
             e.printStackTrace();
         }
         return saldoActual;
-    }
+    }*/
 
     @Override
     public Cuenta buscarCuenta(String numeroCuenta) {

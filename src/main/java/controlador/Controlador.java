@@ -191,27 +191,15 @@ public class Controlador {
         return mat.matches();
     }
 
-   /* *//**
+    /**
      * Busca cuentas de usuario en BBDD
      *
      * @param usuarioActual Usuario de que cuentas queremos buscar
-     * @return Lista de las cuentas de usuario
-     *//*
+     *  @return Lista de las cuentas de usuario
+     */
     public List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual) {
         return cuentaDAO.buscarCuentasUsuario(usuarioActual);
-    }*/
-
-
-    /**
-     * Recoge saldo actual de la cuenta del cliente
-     *
-     * @param numCuentaUsuario Numero de cuenta de que queremos ver el saldo actual
-     * @return Saldo actual de la cuenta bancaria
-     *//*
-    public Double verSaldoDeCuenta(String numCuentaUsuario) {
-        return cuentaDAO.verSaldoDeCuenta(numCuentaUsuario);
     }
-*/
 
     /**
      * Busca la cuenta en BBDD segun numero de la cuenta

@@ -12,9 +12,7 @@ public interface CuentaDAO {
 
     List<String> listaNumerosTodasCuentas();
 
-    //List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual);
-
-    Double verSaldoDeCuenta(String numCuentaUsuario);
+    List<Cuenta> buscarCuentasUsuario(ClienteBanco usuarioActual);
 
     Cuenta buscarCuenta(String numeroCuenta);
 }
