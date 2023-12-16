@@ -97,7 +97,7 @@ public class Cliente {
                             if (valido.equals("V")) {
                                 int opcionMenuBanco = -1;
                                 //entra en opcion de banco
-                                System.out.println("\n****** BIENVENIDO CLIENTE " + nombreCliente + " ******");
+                                System.out.println("\n****** BIENVENIDO CLIENTE " + nombreCliente.toUpperCase() + " ******");
                                 while (true) {
 
                                     try {

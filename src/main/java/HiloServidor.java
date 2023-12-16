@@ -66,13 +66,13 @@ public class HiloServidor extends Thread {
             publicaUsuario = (PublicKey) ois.readObject();
 
         } catch (NoSuchAlgorithmException | IOException | ClassNotFoundException e) {
-            System.out.println(e);
+            throw new RuntimeException(e);
         }
 
         while (cliente.isConnected()) {
 
             try {
-                //recogo cliente de banco para poder almacenar sus datos
+                //recojo cliente de banco para poder almacenar sus datos
                 opcionMenu = (int) ois.readObject();
 
                 switch (opcionMenu) {
@@ -240,9 +240,12 @@ public class HiloServidor extends Thread {
                         break;
                 }
 
-            } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | SignatureException |
+            } catch (ClassNotFoundException | NoSuchAlgorithmException | SignatureException |
                      InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
                 throw new RuntimeException(e);
+            } catch (IOException ioException){
+                System.out.println("Cliente se ha desconectado");
+                break;
             }
         }
 
