@@ -15,9 +15,9 @@ import java.util.Random;
 
 /**
  * @author Anna
- *
+ * <p>
  * La clase HiloServidor representa un hilo que gestiona conexiones de clientes del banco.
- *
+ * <p>
  * Recibe informacion que escribe usuario en consola y le envia a cliente la informacion y mensajes
  * Dependiendo que opcion elije cliente, hace operaciones en aplicacion
  */
@@ -38,7 +38,7 @@ public class HiloServidor extends Thread {
     private Cuenta cuentaCliente;
     private List<String> numerosTodasCuentas;
     private List<Cuenta> cuentasCliente;
-    private List<String> numerosDeCuentas;
+    private List<byte[]> numerosDeCuentas;
     private byte[] numCuentaCifrada;
     private String numCuentaUsuario;
 
@@ -66,7 +66,7 @@ public class HiloServidor extends Thread {
             publicaUsuario = (PublicKey) ois.readObject();
 
         } catch (NoSuchAlgorithmException | IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            System.out.println(e);
         }
 
         while (cliente.isConnected()) {
@@ -74,12 +74,11 @@ public class HiloServidor extends Thread {
             try {
                 //recogo cliente de banco para poder almacenar sus datos
                 opcionMenu = (int) ois.readObject();
+
                 switch (opcionMenu) {
                     case 1:
-                        //recoge array con todos los datos de cliente
                         System.out.println("Recibiendo informacion de cliente");
-                        //****** INFO CIFRADA ***
-                        //recoge informacion de cliente
+                        //recoge informacion del cliente
                         usuarioRegistrarInfo = recogerInfoUsuario();
                         //crea objeto ClienteBanco, para que se puede luego insertar a BBDD
                         ClienteBanco usuarioBanco = crearUsuario(usuarioRegistrarInfo);
@@ -105,17 +104,15 @@ public class HiloServidor extends Thread {
 
                     case 2:
                         //recoge credenciales desde parte cliente
-                        credencialesUsuario = (String[]) ois.readObject();
+                        credencialesUsuario = recogerCredencialesUsuario();
                         System.out.println("Recibiendo credenciales del usuario " + credencialesUsuario[0]);
-                        //las valida
-                        contrasenaHash = credencialesUsuario[1];
                         //busca cliente segun usuario que ha insertado cuando queria inicial sesion
                         System.out.println("Buscando usuario " + credencialesUsuario[0]);
                         usuarioActual = controlador.existeUsuario(credencialesUsuario[0]);
                         if (usuarioActual != null) {
                             //comprueba si contrasenas Hash son iguales
                             System.out.println("Comprobando contrasena");
-                            if (contrasenaHash.matches(usuarioActual.getContrasena())) {
+                            if (credencialesUsuario[1].matches(usuarioActual.getContrasena())) {
                                 System.out.println("Contrasena valida");
                                 oos.writeUTF("V");
                             } else {
@@ -138,11 +135,13 @@ public class HiloServidor extends Thread {
                         c.setNumCuenta(numeroCuenta);
                         c.setSaldo(0.0);
                         c.setClienteBanco(usuarioActual);
-                        if (controlador.insertarCuentaCliente(c)) {
+                        boolean cuentaCreada = controlador.insertarCuentaCliente(c);
+                        if (cuentaCreada) {
                             System.out.println("Cuenta creada");
-                            oos.writeUTF("Tu cuenta bancaria ha sido creada exitosamente.\nNumero de la cuenta: " + c.getNumCuenta());
+                            oos.writeObject(cifrar(c.getNumCuenta()));
                         } else {
-                            oos.writeUTF("Error en crear la cuenta");
+                            System.out.println("Error en crear la cuenta");
+                            oos.writeObject(null);
                         }
                         oos.flush();
                         break;
@@ -213,9 +212,9 @@ public class HiloServidor extends Thread {
                                 String importe = descifrar(importeCifrado);
                                 //COMPROBAR SI HAY SALDO SUFICIENTE EN LA CUENTA
                                 cuentaCliente = controlador.buscarCuenta(numCuentaUsuario);
-                                boolean haySueldoSufuciente = (cuentaCliente.getSaldo() - Double.parseDouble(importe)) > 0;
-                                oos.writeBoolean(haySueldoSufuciente);
-                                if (haySueldoSufuciente) {
+                                boolean haySaldoSufuciente = (cuentaCliente.getSaldo() - Double.parseDouble(importe)) > 0;
+                                oos.writeBoolean(haySaldoSufuciente);
+                                if (haySaldoSufuciente) {
                                     //el servidor se envia un código(cifrado)
                                     System.out.println("Enviando codigo de confirmacion");
                                     enviarCodigo();
@@ -246,7 +245,22 @@ public class HiloServidor extends Thread {
                 throw new RuntimeException(e);
             }
         }
+
         cerrarFlujos(cliente, oos, ois);
+
+    }
+
+    private String[] recogerCredencialesUsuario() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        String[] credenciales = new String[2];
+
+        byte[] username = (byte[]) ois.readObject();
+        String usernameUsuario = descifrar(username);
+        credenciales[0] = usernameUsuario;
+
+        byte[] contrasena = (byte[]) ois.readObject();
+        credenciales[1] = hashearContrasena(descifrar(contrasena));
+
+        return credenciales;
     }
 
     /**
@@ -269,74 +283,34 @@ public class HiloServidor extends Thread {
         oos.writeObject(codigoCifrado);
     }
 
-    //si esta cifrado
-    /*private String[] recogerInfoUsuario() throws IOException, ClassNotFoundException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        String[] usuarioInfo = new String[7];
-        byte[] nombre = (byte[]) ois.readObject();
-        String nombreUsuario = descifrar(nombre);
-        byte[] apellido = (byte[]) ois.readObject();
-        String apellidoUsuario = descifrar(apellido);
-        byte[] dni = (byte[]) ois.readObject();
-        String dniUsuario = descifrar(dni);
-        byte[] edad = (byte[]) ois.readObject();
-        String edadUsuario = descifrar(edad);
-        byte[] email = (byte[]) ois.readObject();
-        String emailUsuario = descifrar(email);
-        byte[] usuario = (byte[]) ois.readObject();
-        String username = descifrar(usuario);
-        byte[] contrasena = (byte[]) ois.readObject();
-        String contrasenaUsuario = descifrar(contrasena);
-        usuarioInfo = new String[]{nombreUsuario, apellidoUsuario, dniUsuario, edadUsuario, emailUsuario, username, contrasenaUsuario};
-        return usuarioInfo;
-    }*/
-
-
     /**
-     * Recoge la información del usuario (nombre, apellido,DNI, edad, email, usuario y contraseña)
+     * Recoge la información del usuario (nombre, apellido,DNI, edad, email, usuario y contraseña) cifrada, la descifra la almacena en array de Strings
      * Valida la existencia del DNI y del nombre de usuario en la BBDD y confirma al usuario si existe cliente con mismo DNI o usuario
      *
      * @return Un array de Strings con la información del usuario.
      * [nombre, apellido, DNI, edad, email, usuario, contraseña]
-     *
-     * @throws IOException              Si hay un error en la operación de entrada/salida.
-     * @throws ClassNotFoundException   Si la clase del objeto recibido no se encuentra.
+     * @throws IOException               Si hay un error en la operación de entrada/salida.
+     * @throws ClassNotFoundException    Si la clase del objeto recibido no se encuentra.
      * @throws NoSuchPaddingException    Si el tipo de relleno utilizado en el cifrado no está disponible.
      * @throws NoSuchAlgorithmException  Si el algoritmo de cifrado utilizado no está disponible.
      * @throws InvalidKeyException       Si se utiliza una clave no válida para inicializar el cifrado.
      * @throws IllegalBlockSizeException Si se produce un error en el tamaño del bloque en el cifrado.
-     * @throws BadPaddingException        Si se produce un error en el relleno en el cifrado.
+     * @throws BadPaddingException       Si se produce un error en el relleno en el cifrado.
      */
     private String[] recogerInfoUsuario() throws IOException, ClassNotFoundException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         String[] usuarioInfo = new String[7];
 
-        String dni, usuario = null;
-        //nombre
-        usuarioInfo[0] = ois.readUTF();
-        //apellido
-        usuarioInfo[1] = ois.readUTF();
-        //DNI
-        while (true) {
-            dni = ois.readUTF();
-            if (controlador.existeDni(dni) == null) {
-                usuarioInfo[2] = dni;
-                oos.writeBoolean(true);
-                oos.flush();
-                break;
-            } else {
-                oos.writeBoolean(false);
-                oos.flush();
-            }
-        }
-        //edad
-        usuarioInfo[3] = ois.readUTF();
-        //email
-        usuarioInfo[4] = ois.readUTF();
+        byte[] nombre = (byte[]) ois.readObject();
+        usuarioInfo[0] = descifrar(nombre);
 
-        //username
+        byte[] apellido = (byte[]) ois.readObject();
+        usuarioInfo[1] = descifrar(apellido);
+
         while (true) {
-            usuario = ois.readUTF();
-            if (controlador.existeUsuario(usuario) == null) {
-                usuarioInfo[5] = usuario;
+            byte[] dni = (byte[]) ois.readObject();
+            String dniUsuario = descifrar(dni);
+            if (controlador.existeDni(dniUsuario) == null) {
+                usuarioInfo[2] = dniUsuario;
                 oos.writeBoolean(true);
                 oos.flush();
                 break;
@@ -345,10 +319,55 @@ public class HiloServidor extends Thread {
                 oos.flush();
             }
         }
-        //contrasena
-        usuarioInfo[6] = ois.readUTF();
+
+        byte[] edad = (byte[]) ois.readObject();
+        usuarioInfo[3] = descifrar(edad);
+
+        byte[] email = (byte[]) ois.readObject();
+        usuarioInfo[4] = descifrar(email);
+
+        while (true) {
+            byte[] username = (byte[]) ois.readObject();
+            String usernameUsuario = descifrar(username);
+            if (controlador.existeUsuario(usernameUsuario) == null) {
+                usuarioInfo[5] = usernameUsuario;
+                oos.writeBoolean(true);
+                oos.flush();
+                break;
+            } else {
+                oos.writeBoolean(false);
+                oos.flush();
+            }
+        }
+
+        byte[] contrasena = (byte[]) ois.readObject();
+        usuarioInfo[6] = hashearContrasena(descifrar(contrasena));
 
         return usuarioInfo;
+    }
+
+    /**
+     * Hashea la contraseña utilizando el algoritmo SHA-256 y devuelve el resultado en formato hexadecimal.
+     *
+     * @param contrasena La contraseña que queremos hashear.
+     * @return La representación en formato hexadecimal del hash de la contraseña.
+     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de hash especificado.
+     */
+    public String hashearContrasena(String contrasena) throws NoSuchAlgorithmException {
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.reset();
+        byte[] contrasenaByte = contrasena.getBytes();
+        md.update(contrasenaByte);
+        //esto es contrasena HASH
+        byte[] resumen = md.digest();
+
+        //para que devuelve como string
+        StringBuilder contrasenaHash = new StringBuilder();
+        for (byte b : resumen) {
+            contrasenaHash.append(String.format("%02x", b));
+        }
+        return contrasenaHash.toString();
     }
 
     /**
@@ -356,12 +375,17 @@ public class HiloServidor extends Thread {
      *
      * @param cuentasCliente La lista de cuentas del cliente.
      * @return Una lista de números de cuents de cliente.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de hash especificado.
+     * @throws NoSuchPaddingException    Si no se encuentra el esquema de padding especificado.
+     * @throws IllegalBlockSizeException Si el tamaño del bloque es ilegal para el algoritmo de cifrado.
+     * @throws BadPaddingException       Si ocurre un error en el padding durante la operación de descifrado.
+     * @throws InvalidKeyException       Si se utiliza una clave inválida para el algoritmo de cifrado.
      */
-    private List<String> listarNumerosDeCuenta(List<Cuenta> cuentasCliente) {
-        List<String> cuentas = new ArrayList<>();
-        if(cuentasCliente != null){
+    private List<byte[]> listarNumerosDeCuenta(List<Cuenta> cuentasCliente) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        List<byte[]> cuentas = new ArrayList<>();
+        if (cuentasCliente != null) {
             for (Cuenta c : cuentasCliente) {
-                cuentas.add(c.getNumCuenta());
+                cuentas.add(cifrar(c.getNumCuenta()));
             }
         }
         return cuentas;

@@ -76,16 +76,6 @@ public class Controlador {
     }
 
     /**
-     * Busca si existe usuario en base de datos segun su email.
-     *
-     * @param email Email de usuario que queremos buscar.
-     * @return Objeto ClienteBanco, si no se encuentra, retorna null.
-     */
-    public ClienteBanco existeEmail(String email) {
-        return clienteDAO.existeEmail(email);
-    }
-
-    /**
      * Valida nombre de cliente.
      *
      * @param nombre Nombre a ser validado.

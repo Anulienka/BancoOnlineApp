@@ -8,11 +8,12 @@ import javax.crypto.NoSuchPaddingException;
 import java.io.*;
 import java.net.Socket;
 import java.security.*;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * @author Anna
- * 
+ * <p>
  * La clase Cliente representa un cliente en la aplicación de banco
  * Se conecta al servidor y permite a usuario comunicar con aplicacion de banco(servidor)
  */
@@ -26,7 +27,7 @@ public class Cliente {
     private PublicKey publicaServidor;
     private PrivateKey privada;
     private PublicKey publica;
-    private List<String> numerosCuentasUsuario;
+    private List<byte[]> numerosCuentasUsuario;
     private String cuentaUsuario;
     private byte[] numCuentaCifrada;
 
@@ -41,7 +42,6 @@ public class Cliente {
 
         ObjectOutputStream oos = new ObjectOutputStream(cliente.getOutputStream());
         ObjectInputStream ois = new ObjectInputStream(cliente.getInputStream());
-        String[] clienteBancoInfo;
         int opcionMenu = -1;
 
         //Primero se intercambian las claves publicas entre usuario y servidor
@@ -54,13 +54,13 @@ public class Cliente {
             oos.writeObject(publica);
 
         } catch (ClassNotFoundException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            System.out.println(e);
         }
 
         while (cliente.isConnected()) {
 
             try {
-                System.out.println("****** BIENVENIDO A BANCO ESTRELLA FFINANCIERA (BEF) ******");
+                System.out.println("****** BIENVENIDO A BANCO ESTRELLA FINANCIERA (BEF) ******");
                 System.out.println("1. Registrarse");
                 System.out.println("2. Iniciar sesion");
 
@@ -91,15 +91,13 @@ public class Cliente {
                             System.out.println("\n****** INICIAR SESION ******");
                             System.out.println("Para poder realizar operaciones bancarias, \nse necesita iniciar sesion insertando usuario y contraseña.\n");
                             oos.writeObject(2);
-                            String[] credenciales = iniciarSesion();
-                            //envio al servidor usuario y contrasena de cliente para que lo valida
-                            oos.writeObject(credenciales);
+                            String nombreCliente = iniciarSesion(oos);
                             //informacion que llega desde servidor
                             String valido = ois.readUTF();
                             if (valido.equals("V")) {
                                 int opcionMenuBanco = -1;
                                 //entra en opcion de banco
-                                System.out.println("\n****** BIENVENIDO CLIENTE " + credenciales[0].toUpperCase() + " ******");
+                                System.out.println("\n****** BIENVENIDO CLIENTE " + nombreCliente + " ******");
                                 while (true) {
 
                                     try {
@@ -114,17 +112,22 @@ public class Cliente {
                                             case 1:
                                                 //envio a servidor que quiero crear una cuenta nueva
                                                 oos.writeObject(3);
-                                                mensajeBanco = ois.readUTF();
-                                                System.out.println(mensajeBanco);
+                                                byte[] cuentaNumero = (byte[]) ois.readObject();
+                                                if (cuentaNumero != null) {
+                                                    System.out.println("Tu cuenta bancaria ha sido creada con exito.");
+                                                    System.out.println("Numero de la cuenta nueva: " + descifrar(cuentaNumero));
+                                                } else {
+                                                    System.out.println("Error en crear la cuenta. Intenta otra vez!.");
+                                                }
                                                 break;
                                             case 2:
                                                 oos.writeObject(4);
-                                                numerosCuentasUsuario = (List<String>) ois.readObject();
+                                                numerosCuentasUsuario = (List<byte[]>) ois.readObject();
                                                 cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
-                                                if(cuentaUsuario.equals("")){
-                                                  oos.writeObject(null);
-                                                  double noHayCuenta = ois.readDouble();
-                                                }else{
+                                                if (cuentaUsuario.equals("")) {
+                                                    oos.writeObject(null);
+                                                    double noHayCuenta = ois.readDouble();
+                                                } else {
                                                     numCuentaCifrada = cifrar(cuentaUsuario);
                                                     oos.writeObject(numCuentaCifrada);
                                                     System.out.println("Saldo actual de la cuenta: " + ois.readDouble() + " €\n");
@@ -134,17 +137,16 @@ public class Cliente {
                                             case 3:
                                                 oos.writeObject(5);
                                                 //usuario elige cuenta de cual quiere hacer transferencia
-                                                numerosCuentasUsuario = (List<String>) ois.readObject();
+                                                numerosCuentasUsuario = (List<byte[]>) ois.readObject();
                                                 cuentaUsuario = elegirCuentaUsuario(numerosCuentasUsuario);
-                                                if(cuentaUsuario.equals("")){
+                                                if (cuentaUsuario.equals("")) {
                                                     oos.writeObject(null);
-                                                }else{
+                                                } else {
                                                     numCuentaCifrada = cifrar(cuentaUsuario);
                                                     //primero envio numero de cuenta cifrada
                                                     oos.writeObject(numCuentaCifrada);
-                                                    //usuario envia elige si quiere hacer ingreso o gasto
+                                                    //usuario elige si quiere hacer ingreso o retirada
                                                     elegirOperacionBanco(oos, ois);
-                                                    //insertarCodigoTransaccion(ois, oos);
                                                 }
                                                 break;
                                         }
@@ -164,7 +166,8 @@ public class Cliente {
 
 
             } catch (NumberFormatException | IOException | ClassNotFoundException | NoSuchAlgorithmException |
-                     SignatureException | InvalidKeyException e) {
+                     SignatureException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException |
+                     BadPaddingException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -176,14 +179,18 @@ public class Cliente {
     /**
      * Registra un nuevo cliente en la aplicacion de banco, pidiendo información necesaria
      * como nombre, apellido, DNI, edad, email, usuario y contraseña. Se valida cada campo
-     * antes de enviarlo al servidor para asegurar datos correctos.
+     * antes de cifrarlo y enviarlo al servidor para asegurar datos correctos.
      *
      * @param oos ObjectOutputStream para enviar datos al servidor.
      * @param ois ObjectInputStream para recibir datos del servidor.
-     * @throws IOException             Si hay un error en la operación de entrada/salida.
-     * @throws NoSuchAlgorithmException Si el algoritmo de hash utilizado para la contraseña no está disponible.
+     * @throws IOException               Si ocurre un error durante la operación de entrada/salida.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de hash especificado.
+     * @throws NoSuchPaddingException    Si no se encuentra el esquema de padding especificado.
+     * @throws IllegalBlockSizeException Si el tamaño del bloque es ilegal para el algoritmo de cifrado.
+     * @throws BadPaddingException       Si ocurre un error en el padding durante la operación de descifrado.
+     * @throws InvalidKeyException       Si se utiliza una clave inválida para el algoritmo de cifrado.
      */
-    private void registrarCliente(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchAlgorithmException {
+    private void registrarCliente(ObjectOutputStream oos, ObjectInputStream ois) throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         String dni;
         String email;
         String contrasena;
@@ -195,9 +202,8 @@ public class Cliente {
         do {
             System.out.print("Nombre: ");
             nombre = br.readLine();
-            if(controlador.validarNombre(nombre.substring(0, 1).toUpperCase() + nombre.substring(1))){
-                nombre = nombre.substring(0, 1).toUpperCase() + nombre.substring(1);
-                oos.writeUTF(nombre);
+            if (controlador.validarNombre(nombre)) {
+                oos.writeObject(cifrar(nombre.substring(0, 1).toUpperCase() + nombre.substring(1)));
                 oos.flush();
                 break;
             }
@@ -207,25 +213,24 @@ public class Cliente {
         do {
             System.out.print("Apellido: ");
             apellido = br.readLine();
-            if(controlador.validarApellido(apellido.substring(0, 1).toUpperCase() + apellido.substring(1))){
-                apellido = apellido.substring(0, 1).toUpperCase() + apellido.substring(1);
-                oos.writeUTF(apellido);
+            if (controlador.validarApellido(apellido)) {
+                oos.writeObject(cifrar(apellido.substring(0, 1).toUpperCase() + apellido.substring(1)));
                 oos.flush();
                 break;
             }
         } while (true);
 
 
-        while (true){
+        while (true) {
             System.out.print("DNI: ");
             dni = br.readLine();
-            if (controlador.validarDNI(dni)){
-                oos.writeUTF(dni.substring(0, 8) + dni.substring(8).toUpperCase());
+            if (controlador.validarDNI(dni)) {
+                oos.writeObject(cifrar(dni.substring(0, 8) + dni.substring(8).toUpperCase()));
                 oos.flush();
                 boolean dniNoExiste = ois.readBoolean();
-                if(dniNoExiste){
+                if (dniNoExiste) {
                     break;
-                }else{
+                } else {
                     System.out.println("Cliente con mismo DNI ya existe.");
                 }
             }
@@ -234,8 +239,8 @@ public class Cliente {
         do {
             System.out.print("Edad: ");
             edad = br.readLine();
-            if(controlador.validarEdad(edad)){
-                oos.writeUTF(edad);
+            if (controlador.validarEdad(edad)) {
+                oos.writeObject(cifrar(edad));
                 oos.flush();
                 break;
             }
@@ -245,45 +250,44 @@ public class Cliente {
         do {
             System.out.print("Email: ");
             email = br.readLine();
-            if(controlador.validarEmail(email)){
-                oos.writeUTF(email);
+            if (controlador.validarEmail(email)) {
+                oos.writeObject(cifrar(email));
                 oos.flush();
                 break;
             }
         } while (true);
 
 
-        while (true){
-            System.out.print("Usuario (debe que tener 6 caracteres alfanumericos): ");
+        while (true) {
+            System.out.println("Usuario \n(debe que tener 6 caracteres alfanumericos): ");
             usuario = br.readLine();
-            if (controlador.validarUsuario(usuario)){
-                oos.writeUTF(usuario);
+            if (controlador.validarUsuario(usuario)) {
+                oos.writeObject(cifrar(usuario));
                 oos.flush();
                 boolean usernameNoExiste = ois.readBoolean();
-                if(usernameNoExiste){
+                if (usernameNoExiste) {
                     break;
-                }else{
+                } else {
                     System.out.println("Cliente con mismo usuario ya existe.");
                 }
             }
         }
 
-        do {
+        while (true) {
             System.out.println("Contraseña: ");
             System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
             contrasena = br.readLine();
-            if(controlador.validarContrasena(contrasena)){
-                String contrasenaHasheada = hashearContrasena(contrasena);
-                oos.writeUTF(contrasenaHasheada);
+            if (controlador.validarContrasena(contrasena)) {
+                oos.writeObject(cifrar(contrasena));
                 oos.flush();
                 break;
             }
-        } while (true);
+        }
     }
 
     /**
      * Recibe un código cifrado enviado por el servidor, lo descifre y pide al usuario que lo inserte correctamente,
-     * y luego envia al servidor true si ha codigo es valido o false si el usuario no ha metido 3 veces mismo codigo que ha enviado servidor.
+     * y luego envia al servidor true si ha codigo es valido o false si el usuario no ha escrito 3 veces mismo codigo que ha enviado servidor.
      *
      * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
      * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
@@ -309,6 +313,7 @@ public class Cliente {
 
     /**
      * Permite al usuario elegir entre realizar un ingreso o una retirada en la cuenta bancaria.
+     * Se pide de usuario que inserta importe, se cifra, envia al servidor y se recoge informacion del servidor si transaccion ha sido realizada o no
      *
      * @param oos ObjectOutputStream, flujo de salida para enviar datos al servidor.
      * @param ois ObjectInputStream, flujo de entrada para recibir datos del servidor.
@@ -330,7 +335,7 @@ public class Cliente {
             if (opcion == 'I') {
                 oos.writeUTF("I");
                 oos.flush();
-                //luego envio inporte cifrado
+                //luego envio importe cifrado
                 double importe = insertarImporte();
                 byte[] importeCifrado = cifrar(String.valueOf(importe));
                 oos.writeObject(importeCifrado);
@@ -404,30 +409,6 @@ public class Cliente {
     }
 
     /**
-     * Hashea la contraseña utilizando el algoritmo SHA-256 y devuelve el resultado en formato hexadecimal.
-     *
-     * @param contrasena La contraseña que queremos hashear.
-     * @return La representación en formato hexadecimal del hash de la contraseña.
-     * @throws NoSuchAlgorithmException Si no se encuentra el algoritmo de hash especificado.
-     */
-    public String hashearContrasena(String contrasena) throws NoSuchAlgorithmException {
-
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.reset();
-        byte[] contrasenaByte = contrasena.getBytes();
-        md.update(contrasenaByte);
-        //esto es contrasena HASH
-        byte[] resumen = md.digest();
-
-        //para que devuelve como string
-        StringBuilder contrasenaHash = new StringBuilder();
-        for (byte b : resumen) {
-            contrasenaHash.append(String.format("%02x", b));
-        }
-        return contrasenaHash.toString();
-    }
-
-    /**
      * Descifra el dato utilizando la clave privada de cliente con RSA algoritmo.
      *
      * @param datoParaDescifrar Datos cifrados que se van a descifrar.
@@ -444,7 +425,6 @@ public class Cliente {
         String datoDescifrado = new String(descipher.doFinal(datoParaDescifrar));
         return datoDescifrado;
     }
-
 
     /**
      * Metodo para firmar documento de normas de banco utilizando firma digital
@@ -485,7 +465,6 @@ public class Cliente {
         }
     }
 
-
     /**
      * Cifra una cadena de caracteres utilizando la clave publica del servidor con RSA algoritmo.
      *
@@ -508,21 +487,29 @@ public class Cliente {
     /**
      * Metodo para elegir la cuenta del usuario.
      *
-     * @param cuentasUsuario Lista de numeros de cuenta de todas las cuentas del usuario en formato String.
+     * @param cuentasUsuario Lista de numeros de cuentas del usuario cifrados en formato byte[].
      * @return Numero de cuenta elegida en forma de cadena de caracteres.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de hash especificado.
+     * @throws NoSuchPaddingException    Si no se encuentra el esquema de padding especificado.
+     * @throws IllegalBlockSizeException Si el tamaño del bloque es ilegal para el algoritmo de cifrado.
+     * @throws BadPaddingException       Si ocurre un error en el padding durante la operación de descifrado.
+     * @throws InvalidKeyException       Si se utiliza una clave inválida para el algoritmo de cifrado.
      */
-    private String elegirCuentaUsuario(List<String> cuentasUsuario) {
+    private String elegirCuentaUsuario(List<byte[]> cuentasUsuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        List<String> cuentasDescifradas = new ArrayList<>();
         int contador = 1;
         boolean opcionValida = false;
         int opcionCuenta = 0;
         String numCuenta = "";
 
-        if(cuentasUsuario.isEmpty()){
+        if (cuentasUsuario.isEmpty()) {
             System.out.println("Usuario no tiene cuenta asignada. Hay que crear cuenta primero.");
-        }else{
+        } else {
             System.out.println("");
-            for (String c : cuentasUsuario) {
-                System.out.println(contador + ". " + c);
+            for (byte[] c : cuentasUsuario) {
+                String numeroCuenta = descifrar(c);
+                cuentasDescifradas.add(numeroCuenta);
+                System.out.println(contador + ". " + numeroCuenta);
                 contador++;
             }
 
@@ -534,7 +521,7 @@ public class Cliente {
                         System.out.println("Opcion inválida.");
                     } else {
                         //retorna empleado elegido
-                        numCuenta = cuentasUsuario.get(opcionCuenta - 1);
+                        numCuenta = cuentasDescifradas.get(opcionCuenta - 1);
                         opcionValida = true;
                     }
                 } catch (Exception e) {
@@ -568,33 +555,45 @@ public class Cliente {
     }
 
     /**
-     * Metodo para iniciar sesión de usuario solicitando y validando el nombre de usuario y la contraseña.
+     * Recoge las credenciales del usuario, las valida, las cifra y envia al servidor
      *
-     * @return Un array que contiene el nombre de usuario en la posición 0 y la contraseña en la posición 1.
-     * @throws IOException Si ocurre un error de entrada/salida durante la lectura.
+     * @return String con Usuario de cliente
+     * @throws IOException               Si ocurre un error de entrada/salida durante la lectura.
+     * @throws IOException               Si ocurre un error durante la operación de entrada/salida.
+     * @throws NoSuchAlgorithmException  Si no se encuentra el algoritmo de hash especificado.
+     * @throws NoSuchPaddingException    Si no se encuentra el esquema de padding especificado.
+     * @throws IllegalBlockSizeException Si el tamaño del bloque es ilegal para el algoritmo de cifrado.
+     * @throws BadPaddingException       Si ocurre un error en el padding durante la operación de descifrado.
+     * @throws InvalidKeyException       Si se utiliza una clave inválida para el algoritmo de cifrado.
      */
-    private String[] iniciarSesion() throws IOException, NoSuchAlgorithmException {
+    private String iniciarSesion(ObjectOutputStream oos) throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         String contrasena;
         String usuario;
-        String contrasenaHasheada;
-        String[] credenciales = new String[2];
 
-        do {
+        while (true) {
             System.out.println("USUARIO (debe que tener 6 caracteres alfanumericos): ");
             usuario = br.readLine();
-        } while (!controlador.validarUsuario(usuario));
+            if (controlador.validarUsuario(usuario)) {
+                byte[] usuarioCifrado = cifrar(usuario);
+                oos.writeObject(usuarioCifrado);
+                oos.flush();
+                break;
+            }
+        }
 
-        do {
+        while (true) {
             System.out.println("CONTRASEÑA: ");
             System.out.println("(debe que tener 10 caracteres: por lo menos 1 digito, 1 mayuscula y 1 minuscula)");
             contrasena = br.readLine();
-            contrasenaHasheada = hashearContrasena(contrasena);
-        } while (!controlador.validarContrasena(contrasena));
+            if (controlador.validarContrasena(contrasena)) {
+                byte[] contrasenaCifrada = cifrar(contrasena);
+                oos.writeObject(contrasenaCifrada);
+                oos.flush();
+                break;
+            }
+        }
 
-        credenciales[0] = usuario;
-        credenciales[1] = contrasenaHasheada;
-
-        return credenciales;
+        return usuario;
     }
 
     /**
